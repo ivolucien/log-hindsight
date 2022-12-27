@@ -1,0 +1,33 @@
+{
+  "name": "@ivolucien/log-hindsight",
+  "version": "0.0.1",
+  "description": "logging features you didn't know you wanted - time travel and transformation",
+  "main": "src/index.js",
+  "files": "src/**/*",
+  "type": "module",
+  "scripts": {
+    "test": "node src/tests/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ivolucien/log-hindsight.git"
+  },
+  "keywords": [
+    "log",
+    "logging",
+    "logger",
+    "storage"
+  ],
+  "author": "Ivo Havener <ivolucien@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ivolucien/log-hindsight/issues"
+  },
+  "homepage": "https://github.com/ivolucien/log-hindsight#readme",
+  "devDependencies": {
+    "chai": "^4.3.7"
+  },
+  "dependencies": {
+    "better-queue": "^3.8.12"
+  }
+}
