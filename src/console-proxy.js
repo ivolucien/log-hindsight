@@ -9,6 +9,6 @@ const QUEUE_NAMES = [
 ];
 
 export default {
-  useModuleDirectly: true,
   getQueueNames() { return QUEUE_NAMES; },
+  isConsole(obj) { return obj instanceof console.Console; },
 }
