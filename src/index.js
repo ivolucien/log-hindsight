@@ -1,5 +1,5 @@
 import ConsoleProxy from "./console-proxy.js";
-import Queue from 'better-queue';
+import HashMap from "hashmap";
 
 export const LOGGER_PROXY_MAP = {
   console: ConsoleProxy,
@@ -12,7 +12,8 @@ export default class Hindsight {
   module;
   name;
   proxy;
-  queues;
+  instanceId; // todo: add instanceId to metadata and set default to uuid or counter?
+  logTables;
 
   constructor(logger = console, testProxy = null) {
     console.log('constructor: called');
@@ -31,9 +32,9 @@ export default class Hindsight {
       isConsole: ConsoleProxy.isConsole(logger),
     });
 
-    this.queues = {};
+    this.logTables = {};
     this.proxy.getQueueNames().forEach((name) => {
-      this.queues[name] = new Queue(function tempNoOp() {});
+      this.logTables[name] = new HashMap();
     });
   }
 
