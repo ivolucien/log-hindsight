@@ -1,4 +1,5 @@
-const QUEUE_NAMES = [
+// todo: add any other relevant console method names
+const LOG_METHODS = [
   'dir',
   'log',
   'trace',
@@ -9,6 +10,6 @@ const QUEUE_NAMES = [
 ];
 
 export default {
-  getQueueNames() { return QUEUE_NAMES; },
-  isConsole(obj) { return obj instanceof console.Console; },
+  getLogTableNames() { return LOG_METHODS; },
+  isConsole(obj) { return obj instanceof console.Console; }, // todo: support browsers w/ no .Console?
 }

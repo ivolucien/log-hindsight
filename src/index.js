@@ -7,7 +7,7 @@ export const LOGGER_PROXY_MAP = {
 
 const DEFAULT_LOGGER = 'console';
 
-// General logger and payload queue management
+// Logger proxy handling payload access and management
 export default class Hindsight {
   module;
   name;
@@ -33,7 +33,7 @@ export default class Hindsight {
     });
 
     this.logTables = {};
-    this.proxy.getQueueNames().forEach((name) => {
+    this.proxy.getLogTableNames().forEach((name) => {
       this.logTables[name] = new HashMap();
     });
   }
@@ -42,5 +42,17 @@ export default class Hindsight {
   createLogger() {
     const rawLogger = this.module;
     return new Proxy(rawLogger, this.proxy)
+  }
+
+  // todo: add method to push log message to the relevant level table
+  log(metadata, message, ...additionalParams) {
+    let context = {
+      level: 'info',
+      sessionId: this.instanceId,
+      timestamp: Date.now(),
+      ...metadata
+    };
+    // todo: add the data to the relevent logTable, either by name or log level integer
+    // todo: call the trim / purge function to keep to specified data limits
   }
 }
