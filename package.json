@@ -6,7 +6,7 @@
   "files": "src/**/*",
   "type": "module",
   "scripts": {
-    "test": "node src/tests/*.js"
+    "test": "for file in src/tests/*.js; do node $file; done"
   },
   "repository": {
     "type": "git",
