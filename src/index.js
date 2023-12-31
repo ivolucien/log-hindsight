@@ -34,7 +34,7 @@ export default class Hindsight {
 
     this.logTables = {};
     this.proxy.getLogTableNames().forEach((name) => {
-      this.logTables[name] = new HashMap();
+      this.logTables[name] = {};
     });
   }
 
@@ -44,15 +44,55 @@ export default class Hindsight {
     return new Proxy(rawLogger, this.proxy)
   }
 
-  // todo: add method to push log message to the relevant level table
-  log(metadata, message, ...additionalParams) {
+  tableInit(name, sessionId) {
+    if (this.logTables[name] == null) {
+      throw new Error('log table not found');
+    }
+    this.logTables[name][sessionId] = new HashMap();
+    return this.logTables[name][sessionId];
+  }
+
+  // todo: add options and/or format param(s)
+  log(metadata, payload) {
     let context = {
-      level: 'info',
+      table: 'info',
       sessionId: this.instanceId,
       timestamp: Date.now(),
       ...metadata
     };
-    // todo: add the data to the relevent logTable, either by name or log level integer
+    const name = context.table || context.level;
+    const table = this.tableInit(name, context.sessionId);
+    const sequenceId = table.counter++;
+    table.set("${timestamp}.${sequenceId}}, {
+      timestamp,
+      ...payload
+    });
     // todo: call the trim / purge function to keep to specified data limits
   }
 }
+
+/*
+data format brainstorming
+
+{
+  info: HashMap {
+    sessionId: theLogLine {
+      <timestamp>.<sequenceId>: {
+        timestamp,
+        message: *,
+        error: *,
+        ...
+      }
+    },
+    possibly add -> sequenceId: theLogLine { same obj as above }
+  }
+}
+*/
+
+
+
+
+
+
+
+
