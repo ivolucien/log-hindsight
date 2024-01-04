@@ -1,13 +1,27 @@
+/**
+ * Hindsight is a logger proxy that handles log lines and conditional output options.
+ * 
+ * It provides functionality to wrap loggers and track tables of log lines, including metadata.
+ * Hindsight log tables are organized by log level names, session IDs and sequence numbers.
+ * It supports customization options for logging configuration and log level, and allows for
+ * trimming or purging of log data to maintain specified data limits.
+ *
+ * @class
+ * @constructor
+ * @param {Object} [logger=console] - The logger object to be used for logging.
+ * @param {Object} [testProxy=null] - The test proxy object to be used for testing purposes.
+ */
+
 import ConsoleProxy from "./console-proxy.js";
-import HashMap from "hashmap";
 
 export const LOGGER_PROXY_MAP = {
   console: ConsoleProxy,
 };
 
 const DEFAULT_LOGGER = 'console';
+let instanceId = 0;
 
-// Logger proxy handling payload access and management
+// Logger proxy handling log line access and management
 export default class Hindsight {
   module;
   name;
@@ -18,6 +32,7 @@ export default class Hindsight {
   constructor(logger = console, testProxy = null) {
     console.log('constructor: called');
     // todo: move to a getLoggerName function
+    this.instanceId = instanceId++; // used for default sessionId
     this.name = ConsoleProxy.isConsole(logger) ? 'console' : 'unknown';
     this.module = logger;
 
@@ -44,29 +59,58 @@ export default class Hindsight {
     return new Proxy(rawLogger, this.proxy)
   }
 
-  tableInit(name, sessionId) {
-    if (this.logTables[name] == null) {
-      throw new Error('log table not found');
-    }
-    this.logTables[name][sessionId] = new HashMap();
-    return this.logTables[name][sessionId];
+  /**
+   * Retrieves the log table associated with the given name and session ID.
+   * If the table does not exist, a new table object is created and returned.
+   *
+   * @param {string} name - The name of the table, such as 'info' or 'error'.
+   * @param {string} [sessionId] - The session ID, defaults to the hindsight instance ID.
+   * @returns {object} The log line table associated with the given name and session ID.
+   */
+  getTable(name, sessionId) {
+    // get or add log level table
+    const namedTable = this.logTables[name] || {};
+    this.logTables[name] = namedTable;
+
+    // get or add session table
+    namedTable[sessionId] = namedTable[sessionId] || { counter: 1};
+    console.dir({ namedTable, counter: namedTable[sessionId].counter });
+    return namedTable[sessionId];
   }
 
-  // todo: add options and/or format param(s)
-  log(metadata, payload) {
-    let context = {
-      table: 'info',
-      sessionId: this.instanceId,
+  // prefix  with 'id' to differentiate from sequence number
+  get instanceId() {
+    return 'id' + this.instanceId;
+  }
+
+  // todo: support options and/or format properties in metadata
+  /**
+   * Logs the provided metadata and payload.
+   *
+   * @param {Object} metadata - The metadata object containing additional information for the log.
+   * @param {Array} payload - The original args passed to the proxied log method.
+   * @returns {void}
+   */
+  log(metadata, ...payload) {
+    let {
+      name,
+      ...context
+    } = {
+      name: 'info',
+      sessionId: this.instanceId, // instance ID acts as a bucket for all non-session logs
       timestamp: Date.now(),
       ...metadata
     };
-    const name = context.table || context.level;
-    const table = this.tableInit(name, context.sessionId);
-    const sequenceId = table.counter++;
-    table.set("${timestamp}.${sequenceId}}, {
-      timestamp,
-      ...payload
-    });
+    console.log({ name, context, payload });
+
+    // get corresponding log table
+    const table = this.getTable(name, context.sessionId);
+    context.sequence = table.counter++;
+    // assign log line in sequence
+    table[context.sequence] = {
+      context,
+      payload
+    };
     // todo: call the trim / purge function to keep to specified data limits
   }
 }
@@ -75,7 +119,7 @@ export default class Hindsight {
 data format brainstorming
 
 {
-  info: HashMap {
+  info: {
     sessionId: theLogLine {
       <timestamp>.<sequenceId>: {
         timestamp,
@@ -84,7 +128,7 @@ data format brainstorming
         ...
       }
     },
-    possibly add -> sequenceId: theLogLine { same obj as above }
+    todo: add -> sequenceId: theLogLine { same obj as above }
   }
 }
 */
