@@ -2,43 +2,73 @@ import { expect } from 'chai';
 // Import the Hindsight class from src/index.js
 import Hindsight from '../index.js';
 
-// Create a new instance of the Hindsight class
-const hindsight = new Hindsight();
+function setupLogTest(metadata, ...payload) {
+  const hindsight = new Hindsight();
+  hindsight.log(metadata, ...payload);
+  return hindsight;
+}
 
-console.log("Check if metadata and payload are added correctly to logTables");
-const test1Metadata = { sessionId: '123456', name: 'info' };
-const test1Payload = { message: 'Test log message' };
-hindsight.log(test1Metadata, test1Payload);
+function expectValidLogTable(hsInstance, tableName) {
+  expect(hsInstance.logTables).to.haveOwnProperty(tableName);
+  expect(hsInstance.logTables[tableName]).to.be.an('object');
+  return hsInstance.logTables[tableName];
+}
+function expectValidLogLine(logTable, expectedData) {
+  const sessionId = expectedData.context.sessionId;
+  expect(logTable).to.haveOwnProperty(sessionId);
 
-const test1Table = hindsight.logTables[test1Metadata.name];
-expect(test1Table[test1Metadata.sessionId]).to.be.an('object');
-const test1Session = test1Table[test1Metadata.sessionId];
+  const logLine = logTable[sessionId][expectedData.context.sequence];
+  expect(logLine.context.timestamp).to.be.a('number');
+  const { timestamp, ...staticData } = logLine.context;
+  if (expectedData.context.timestamp) {
+    expect(timestamp).to.equal(expectedData.context.timestamp);
+    delete expectedData.context.timestamp;
+  }
+  expect(staticData).to.deep.eql(expectedData.context);
+  expect(logLine.payload).to.deep.eql(expectedData.payload);
+}
 
-const test1LogLine = test1Session[1];
-expect(test1LogLine).to.haveOwnProperty('context');
-expect(test1LogLine.context).to.haveOwnProperty('timestamp');
+console.log('Typical metadata and payload are added correctly to logTables');
+let hindsight = setupLogTest(
+  { sessionId: '123456', name: 'trace' },
+  { message: 'Test log message' }
+);
 
-delete test1LogLine.context.timestamp;
-expect(test1LogLine).to.deep.eql({
-  context: { sessionId: '123456', sequence: 1 },
-  payload: [{ message: 'Test log message' }]
+let testTable = expectValidLogTable(hindsight, 'trace');
+expectValidLogLine(testTable, {
+    context: { sessionId: '123456', sequence: 1 },
+    payload: [{ message: 'Test log message' }]  
 });
 
-/*
-// Test 2: Check if metadata.name defaults to 'info' if not provided
-const test2Payload = { sessionId: '123456', message: 'Test log message' };
-hindsight.log({}, test2Payload);
-expect(hindsight.logTables['info'][test2Payload.sessionId]).to.equal({
-  ...test2Payload,
-  context: {}
+console.log('Multiple payload args are added correctly to logTables');
+hindsight = setupLogTest(
+  { sessionId: '123456', name: 'trace' },
+  [],
+  "testing",
+  { message: 'Test log message' }
+);
+
+testTable = expectValidLogTable(hindsight, 'trace');
+expectValidLogLine(testTable, {
+    context: { sessionId: '123456', sequence: 1 },
+    payload: [[], "testing", { message: 'Test log message' }]
 });
 
-// Test 3: Check the contents of the resulting object in logTables
-const test3Metadata = { name: 'error' };
-const test3Payload = { sessionId: '123456', message: 'Test log message' };
-hindsight.log(test3Metadata, test3Payload);
-expect(hindsight.logTables[test3Metadata.name][test3Payload.sessionId]).to.equal({
-  ...test3Payload,
-  context: test3Metadata
+console.log('Default context values are used when no metadata is provided');
+hindsight = setupLogTest({}, { message: 'Test log message' });
+
+testTable = expectValidLogTable(hindsight, 'info');
+expectValidLogLine(testTable, {
+    context: { sessionId: hindsight.instanceId, sequence: 1 },
+    payload: [{ message: 'Test log message' }]  
 });
-*/
+
+console.log('Specific timestamp provided is used');
+const then = Date.now() - 1000;
+hindsight = setupLogTest({ timestamp: then }, { message: 'Test log message' });
+
+testTable = expectValidLogTable(hindsight, 'info');
+expectValidLogLine(testTable, {
+    context: { timestamp: then, sessionId: hindsight.instanceId, sequence: 1 },
+    payload: [{ message: 'Test log message' }]  
+});
