@@ -41,11 +41,12 @@ export default class Hindsight {
     this.proxy = testProxy || LOGGER_PROXY_MAP[this.name];
 
     // todo: support logging configuration for Hindsight itself, inc. log level
-    console.log({
-      name: this.name,
-      haveProxy,
-      isConsole: ConsoleProxy.isConsole(logger),
-    });
+    // console.log({
+    //   name: this.name,
+    //   instanceId: this.instanceId,
+    //   haveProxy,
+    //   isConsole: ConsoleProxy.isConsole(logger),
+    // });
 
     this.logTables = {};
     this.proxy.getLogTableNames().forEach((name) => {
@@ -74,7 +75,8 @@ export default class Hindsight {
 
     // get or add session table
     namedTable[sessionId] = namedTable[sessionId] || { counter: 1};
-    console.dir({ namedTable, counter: namedTable[sessionId].counter });
+    // console.dir({ namedTable, counter: namedTable[sessionId].counter });
+
     return namedTable[sessionId];
   }
 
@@ -92,7 +94,7 @@ export default class Hindsight {
    * @returns {void}
    */
   log(metadata, ...payload) {
-    let {
+    const {
       name,
       ...context
     } = {
@@ -101,7 +103,7 @@ export default class Hindsight {
       timestamp: Date.now(),
       ...metadata
     };
-    console.log({ name, context, payload });
+    // console.log({ name, instanceId: this.instanceId, context, payload });
 
     // get corresponding log table
     const table = this.getTable(name, context.sessionId);
@@ -116,19 +118,25 @@ export default class Hindsight {
 }
 
 /*
-data format brainstorming
-
+hindsight.logTables format
 {
   info: {
-    sessionId: theLogLine {
-      <timestamp>.<sequenceId>: {
-        timestamp,
-        message: *,
-        error: *,
-        ...
+    sessionId<any|instanceId>: {
+      sequence<integer>: {
+        context: {
+          timestamp,
+          sessionId<any>,
+          sequence<integer>,
+          ...<any>
+        },
+        payload: [
+          // examples, not required
+          { message: * },
+          err<Error>,
+          ...<any>
+        ]
       }
-    },
-    todo: add -> sequenceId: theLogLine { same obj as above }
+    }
   }
 }
 */
