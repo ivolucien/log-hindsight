@@ -85,7 +85,6 @@ export default class Hindsight {
     return 'id' + this.instanceId;
   }
 
-  // todo: support options and/or format properties in metadata
   /**
    * Logs the provided metadata and payload.
    *
@@ -93,7 +92,7 @@ export default class Hindsight {
    * @param {Array} payload - The original args passed to the proxied log method.
    * @returns {void}
    */
-  log(metadata, ...payload) {
+  logIntake(metadata, ...payload) {
     const {
       name,
       ...context
@@ -103,6 +102,8 @@ export default class Hindsight {
       timestamp: Date.now(),
       ...metadata
     };
+    // todo: support options and/or format properties in metadata
+
     // console.log({ name, instanceId: this.instanceId, context, payload });
 
     // get corresponding log table
@@ -116,6 +117,9 @@ export default class Hindsight {
     // todo: call the trim / purge function to keep to specified data limits
   }
 }
+
+// todo: add trim / purge function to keep to specified data limits (cullLogLines?)
+// todo: add method to use rules to sanitize, keep or write log lines (logDirector?)
 
 /*
 hindsight.logTables format

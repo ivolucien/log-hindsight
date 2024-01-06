@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import Hindsight from '../index.js';
 
 // todo: consider adding either zora (minimal) or AVA (lightweight) test runner
-console.log('constructor tests...');
+console.log("/nconstructor tests...");
 
 console.log('depend on default constructor values');
 let obj = new Hindsight();

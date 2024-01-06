@@ -2,9 +2,10 @@ import { expect } from 'chai';
 // Import the Hindsight class from src/index.js
 import Hindsight from '../index.js';
 
+console.log("\nlogIntake tests...");
 function setupLogTest(metadata, ...payload) {
   const hindsight = new Hindsight();
-  hindsight.log(metadata, ...payload);
+  hindsight.logIntake(metadata, ...payload);
   return hindsight;
 }
 

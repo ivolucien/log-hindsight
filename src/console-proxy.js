@@ -11,5 +11,7 @@ const LOG_METHODS = [
 
 export default {
   getLogTableNames() { return LOG_METHODS; },
-  isConsole(obj) { return obj instanceof console.Console; }, // todo: support browsers w/ no .Console?
+  isConsole(obj) {
+    return obj instanceof console.Console; // todo: support browsers w/ no .Console?
+  },
 }
