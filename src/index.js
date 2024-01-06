@@ -27,6 +27,7 @@ export default class Hindsight {
   name;
   proxy;
   instanceId; // todo: add instanceId to metadata and set default to uuid or counter?
+  logMethods;
   logTables;
 
   constructor(logger = console, testProxy = null) {
@@ -49,15 +50,25 @@ export default class Hindsight {
     // });
 
     this.logTables = {};
+    this.logMethods = this.proxy.getLogMethods();
+
     this.proxy.getLogTableNames().forEach((name) => {
+      // create log table object
       this.logTables[name] = {};
+      // setup log method proxy, passing in logger method name and log level
+      this[name] = (...payload) => {
+        this.logIntake({
+          name,
+          level: this.logMethods[name].level
+        }, payload); // expects payload to be an arg array
+      }
     });
   }
 
   // todo: add options parameter and most common base logger options
   createLogger() {
     const rawLogger = this.module;
-    return new Proxy(rawLogger, this.proxy)
+    return new Hindsight(rawLogger, this.proxy)
   }
 
   /**
