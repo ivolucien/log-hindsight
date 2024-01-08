@@ -9,50 +9,56 @@
  * @class
  * @constructor
  * @param {Object} [logger=console] - The logger object to be used for logging.
+ * @param {Object} [rules={}] - The rules object used to configure conditional logging.
  * @param {Object} [testProxy=null] - The test proxy object to be used for testing purposes.
  */
 
 import ConsoleProxy from "./console-proxy.js";
 
+// todo: support bunyan, pino, winston, etc.
 export const LOGGER_PROXY_MAP = {
   console: ConsoleProxy,
 };
 
 const DEFAULT_LOGGER = 'console';
-let instanceId = 0;
+let instanceId = 0; // base counter, formatted instanceID is 'id' + instanceId integer
 
 // Logger proxy handling log line access and management
 export default class Hindsight {
+  _instanceId; // todo: add instanceId to metadata and set default to uuid or counter?
   module;
   name;
   proxy;
-  instanceId; // todo: add instanceId to metadata and set default to uuid or counter?
+  rules;
+
   logMethods;
   logTables;
 
-  constructor(logger = console, testProxy = null) {
+  constructor({
+    logger = console,
+    rules = { write: { level: logger.level || 'info' }},
+    testProxy = null } = {}
+  ) {
     console.log('constructor: called');
+    this._instanceId = instanceId++; // used for default sessionId
     // todo: move to a getLoggerName function
-    this.instanceId = instanceId++; // used for default sessionId
     this.name = ConsoleProxy.isConsole(logger) ? 'console' : 'unknown';
     this.module = logger;
+    this.rules = rules;
 
     // setup logger proxy, use test proxy if passed in
-    const haveProxy = LOGGER_PROXY_MAP[this.name] != null || testProxy != null;
     this.proxy = testProxy || LOGGER_PROXY_MAP[this.name];
 
     // todo: support logging configuration for Hindsight itself, inc. log level
-    // console.log({
-    //   name: this.name,
-    //   instanceId: this.instanceId,
-    //   haveProxy,
-    //   isConsole: ConsoleProxy.isConsole(logger),
-    // });
+    console.log({
+      name: this.name,
+      instanceId: this.instanceId,
+    });
 
     this.logTables = {};
     this.logMethods = this.proxy.getLogMethods();
 
-    this.proxy.getLogTableNames().forEach((name) => {
+    this.proxy.logTableNames.forEach((name) => {
       // create log table object
       this.logTables[name] = {};
       // setup log method proxy, passing in logger method name and log level
@@ -65,6 +71,12 @@ export default class Hindsight {
     });
   }
 
+  // prefix  with 'id' to differentiate from sequence number
+  get instanceId() {
+    return 'id' + this._instanceId;
+  }
+
+  // TODO: Test the createLogger method and verify that it returns a new Hindsight instance with the correct logger and proxy
   // todo: add options parameter and most common base logger options
   createLogger() {
     const rawLogger = this.module;
@@ -79,7 +91,7 @@ export default class Hindsight {
    * @param {string} [sessionId] - The session ID, defaults to the hindsight instance ID.
    * @returns {object} The log line table associated with the given name and session ID.
    */
-  getTable(name, sessionId) {
+  getTable(name, sessionId = this.instanceId) {
     // get or add log level table
     const namedTable = this.logTables[name] || {};
     this.logTables[name] = namedTable;
@@ -91,11 +103,6 @@ export default class Hindsight {
     return namedTable[sessionId];
   }
 
-  // prefix  with 'id' to differentiate from sequence number
-  get instanceId() {
-    return 'id' + this.instanceId;
-  }
-
   /**
    * Logs the provided metadata and payload.
    *
@@ -104,6 +111,7 @@ export default class Hindsight {
    * @returns {void}
    */
   logIntake(metadata, ...payload) {
+    // pull name from metadata, set defaults for specific metadata properties
     const {
       name,
       ...context
@@ -114,9 +122,40 @@ export default class Hindsight {
       ...metadata
     };
     // todo: support options and/or format properties in metadata
-
+    // todo: write sanitize function to remove sensitive data from log lines, if specified
     // console.log({ name, instanceId: this.instanceId, context, payload });
 
+    const action = this.selectAction(name, context, payload);
+    if (action === 'discard') { return; }
+
+    if (action === 'write') {
+      this.module[name](...payload); // pass to the original logger method
+    } else if (action === 'defer') {
+      this.deferToTable(name, context, payload);
+    } // todo: purge function to remove this log line's session table
+    
+    // todo: trim function to keep to specified data limits (cullLogLines?)
+  }
+
+  selectAction(name, context, payload) {
+    // todo: move into rules module as this expands
+    if (payload.length === 0) {
+      return 'discard'; // log nothing if called with no payload
+    }
+
+    // todo: move to a getRank() method
+    const threshold = this.proxy.levelIntHash[this.rules?.write?.level];
+    const lineLevel = this.proxy.levelIntHash[context.level || name];
+    console.log({ threshold, lineLevel });
+    if (lineLevel < threshold) {
+      return 'defer';
+    } else {
+      return 'write';
+    }
+    // todo: handle rules to purge log line
+  }
+
+  deferToTable(name, context, payload) {
     // get corresponding log table
     const table = this.getTable(name, context.sessionId);
     context.sequence = table.counter++;
@@ -125,8 +164,7 @@ export default class Hindsight {
       context,
       payload
     };
-    // todo: call the trim / purge function to keep to specified data limits
-  }
+  }    
 }
 
 // todo: add trim / purge function to keep to specified data limits (cullLogLines?)

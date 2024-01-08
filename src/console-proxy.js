@@ -12,12 +12,23 @@ const LOG_NAMES =  LOG_METHODS.reduce(
   (names, method) => { names.push(method.name); return names; },
   []
 );
+const LOG_LEVELS =  LOG_METHODS.reduce(
+  (levels, {name, level}) => {
+    levels[name] = level;
+    levels[level] = level;
+    return levels; },
+  {}
+);
 
 export default {
   getLogMethods() { return [ ...LOG_METHODS ] },
 
-  getLogTableNames() {
+  get logTableNames() {
     return LOG_NAMES;
+  },
+
+  get levelIntHash() {
+    return LOG_LEVELS;
   },
 
   isConsole(obj) {
