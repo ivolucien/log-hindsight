@@ -26,8 +26,5 @@
   "homepage": "https://github.com/ivolucien/log-hindsight#readme",
   "devDependencies": {
     "chai": "^4.3.7"
-  },
-  "dependencies": {
-    "hashmap": "^2.4.0"
   }
 }
