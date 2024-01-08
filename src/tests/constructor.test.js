@@ -5,7 +5,7 @@ import Hindsight from '../index.js';
 console.log("\nconstructor tests...");
 
 function validateConstructor(logger, testProxy) {
-  const instance = new Hindsight(logger, testProxy);
+  const instance = new Hindsight({ logger, testProxy });
   expect(instance).to.be.instanceOf(Hindsight);
   expect(instance.module).to.equal(logger || console);
   // check proxy log methods
@@ -20,7 +20,6 @@ console.log('depend on default constructor values');
 let obj = validateConstructor();
 expect(obj.name).to.equal('console');
 
-
 console.log('explicitly pass console');
 obj = validateConstructor(console);
 expect(obj.name).to.equal('console');
@@ -28,15 +27,17 @@ expect(obj.name).to.equal('console');
 console.log('uses custom logger module when proxy is passed in');
 const FakeLogger = {
   fake: true,
-  getLogTableNames() { return ['info']; },
-  getLogMethods() { return [{ name: 'info', level: 30 }]; },
+  logTableNames: ['info'],
+  levelIntHash: { info: 30, 30: 30 },
+  getLogMethods: () => { return [{ name: 'info', level: 30 }]; },
   info() { console.error('FakeLogger info() called') },
 }
 obj = validateConstructor(FakeLogger, {
   // custom proxy
   stub: true,
-  getLogTableNames() { return ['info']; },
-  getLogMethods() { return [{ name: 'info', level: 30 }]; },
+  logTableNames: ['info'],
+  levelIntHash: { info: 30, 30: 30 },
+  getLogMethods: () => { return [{ name: 'info', level: 30 }]; },
 });
 expect(obj.name).to.equal('unknown')
 expect(obj.module).to.haveOwnProperty('fake');

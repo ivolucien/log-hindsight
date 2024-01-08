@@ -4,7 +4,7 @@ import Hindsight from '../index.js';
 
 console.log("\nlogIntake tests...");
 function setupLogTest(metadata, ...payload) {
-  const hindsight = new Hindsight();
+  const hindsight = new Hindsight({});
   hindsight.logIntake(metadata, ...payload);
   return hindsight;
 }
@@ -31,11 +31,11 @@ function expectValidLogLine(logTable, expectedData) {
 
 console.log('Typical metadata and payload are added correctly to logTables');
 let hindsight = setupLogTest(
-  { sessionId: '123456', name: 'trace' },
+  { sessionId: '123456', name: 'debug' },
   { message: 'Test log message' }
 );
 
-let testTable = expectValidLogTable(hindsight, 'trace');
+let testTable = expectValidLogTable(hindsight, 'debug');
 expectValidLogLine(testTable, {
     context: { sessionId: '123456', sequence: 1 },
     payload: [{ message: 'Test log message' }]  
