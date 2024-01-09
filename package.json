@@ -6,7 +6,8 @@
   "files": "src/**/*",
   "type": "module",
   "scripts": {
-    "test": "for file in src/tests/*.js; do echo \"\nRunning $file\"; node $file; done"
+    "test": "for file in src/tests/*.js; do echo \"\nRunning $file\"; node $file; done",
+    "test-debug": "for file in src/tests/*.js; do echo \"\nRunning $file\"; HINDSIGHT_LOG_LEVEL=trace node $file; done"
   },
   "repository": {
     "type": "git",

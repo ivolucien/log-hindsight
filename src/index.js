@@ -25,9 +25,11 @@ let instanceId = 0; // base counter, formatted instanceID is 'id' + instanceId i
 
 // Logger proxy handling log line access and management
 export default class Hindsight {
+  _moduleLogLevel;
+  _trace; _dir; _debug; _info; _warn; _error; // internal log methods
   _instanceId; // todo: add instanceId to metadata and set default to uuid or counter?
   module;
-  name;
+  moduleName;
   proxy;
   rules;
 
@@ -36,32 +38,54 @@ export default class Hindsight {
 
   constructor({
     logger = console,
-    rules = { write: { level: logger.level || 'info' }},
-    testProxy = null } = {}
-  ) {
-    console.log('constructor: called');
+    rules = { write: { level: logger.level || 'info' } },
+    proxyOverride = null
+  } = {}) {
+    this._setupModuleLogMethods();
+    this._debug('Hindsight constructor called');
+
     this._instanceId = instanceId++; // used for default sessionId
     // todo: move to a getLoggerName function
-    this.name = ConsoleProxy.isConsole(logger) ? 'console' : 'unknown';
+    this.moduleName = ConsoleProxy.isConsole(logger) ? 'console' : 'unknown';
     this.module = logger;
     this.rules = rules;
 
     // setup logger proxy, use test proxy if passed in
-    this.proxy = testProxy || LOGGER_PROXY_MAP[this.name];
+    this.proxy = proxyOverride || LOGGER_PROXY_MAP[this.moduleName];
 
-    // todo: support logging configuration for Hindsight itself, inc. log level
-    console.log({
-      name: this.name,
-      instanceId: this.instanceId,
-    });
+    this._setupProxyLogging();
+  }
 
+    // setup internal (console) log methods for hindsight code with '_' prefix
+  _setupModuleLogMethods() {
+    const levelName = process.env.HINDSIGHT_LOG_LEVEL || 'error';
+    this._moduleLogLevel = ConsoleProxy.levelIntHash[levelName];
+
+    ['trace', 'dir', 'debug', 'info', 'warn', 'error'].forEach((name) => {
+      this['_' + name] = (...payload) => {
+        const lineLevel = ConsoleProxy.levelIntHash[name];
+        console.debug({ env: process.env.HINDSIGHT_LOG_LEVEL, lineLevel, moduleLogLevel: this._moduleLogLevel });
+
+        if (lineLevel >= this._moduleLogLevel) {
+          console[name](...payload);
+        }
+      };
+    })
+  }
+
+  // prefix  with 'id' to differentiate from sequence number
+  get instanceId() {
+    return 'id' + this._instanceId;
+  }
+
+  _setupProxyLogging() {
     this.logTables = {};
     this.logMethods = this.proxy.getLogMethods();
 
     this.proxy.logTableNames.forEach((name) => {
       // create log table object
       this.logTables[name] = {};
-      // setup log method proxy, passing in logger method name and log level
+      // setup log method proxy for caller, passing in logger method name and log level
       this[name] = (...payload) => {
         this.logIntake({
           name,
@@ -71,18 +95,18 @@ export default class Hindsight {
     });
   }
 
-  // prefix  with 'id' to differentiate from sequence number
-  get instanceId() {
-    return 'id' + this._instanceId;
-  }
-
   // TODO: Test the createLogger method and verify that it returns a new Hindsight instance with the correct logger and proxy
   // todo: add options parameter and most common base logger options
   createLogger() {
-    const rawLogger = this.module;
-    return new Hindsight(rawLogger, this.proxy)
+    const logger = this.module;
+    return new Hindsight({ logger, proxyOverride: this.proxy });
   }
 
+  get moduleLogLevel() { return this._moduleLogLevel; }
+
+  set moduleLogLevel(level) {
+    this._moduleLogLevel = this.proxy.levelIntHash[level] || this.moduleLogLevel;
+  }
   /**
    * Retrieves the log table associated with the given name and session ID.
    * If the table does not exist, a new table object is created and returned.
@@ -143,10 +167,10 @@ export default class Hindsight {
       return 'discard'; // log nothing if called with no payload
     }
 
-    // todo: move to a getRank() method
+    // todo: move to a getRank() method?
     const threshold = this.proxy.levelIntHash[this.rules?.write?.level];
     const lineLevel = this.proxy.levelIntHash[context.level || name];
-    console.log({ threshold, lineLevel });
+    console.dir({ threshold, lineLevel });
     if (lineLevel < threshold) {
       return 'defer';
     } else {
