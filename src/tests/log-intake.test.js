@@ -3,9 +3,12 @@ import { expect } from 'chai';
 import Hindsight from '../index.js';
 
 console.log("\nlogIntake tests...");
+
 function setupLogTest(metadata, ...payload) {
   const hindsight = new Hindsight({});
+
   hindsight.logIntake(metadata, ...payload);
+  hindsight._dir(hindsight.logTables);
   return hindsight;
 }
 
@@ -56,9 +59,10 @@ expectValidLogLine(testTable, {
 });
 
 console.log('Default context values are used when no metadata is provided');
-hindsight = setupLogTest({}, { message: 'Test log message' });
+hindsight = setupLogTest({ name: 'debug' }, { message: 'Test log message' });
 
-testTable = expectValidLogTable(hindsight, 'info');
+testTable = expectValidLogTable(hindsight, 'debug');
+hindsight._dir({testTable});
 expectValidLogLine(testTable, {
     context: { sessionId: hindsight.instanceId, sequence: 1 },
     payload: [{ message: 'Test log message' }]  
@@ -66,9 +70,9 @@ expectValidLogLine(testTable, {
 
 console.log('Specific timestamp provided is used');
 const then = Date.now() - 1000;
-hindsight = setupLogTest({ timestamp: then }, { message: 'Test log message' });
+hindsight = setupLogTest({ name: 'debug', timestamp: then }, { message: 'Test log message' });
 
-testTable = expectValidLogTable(hindsight, 'info');
+testTable = expectValidLogTable(hindsight, 'debug');
 expectValidLogLine(testTable, {
     context: { timestamp: then, sessionId: hindsight.instanceId, sequence: 1 },
     payload: [{ message: 'Test log message' }]  

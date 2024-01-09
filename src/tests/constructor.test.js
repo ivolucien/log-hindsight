@@ -4,8 +4,8 @@ import Hindsight from '../index.js';
 // todo: consider adding either zora (minimal) or AVA (lightweight) test runner
 console.log("\nconstructor tests...");
 
-function validateConstructor(logger, testProxy) {
-  const instance = new Hindsight({ logger, testProxy });
+function validateConstructor(logger, proxyOverride) {
+  const instance = new Hindsight({ logger, proxyOverride });
   expect(instance).to.be.instanceOf(Hindsight);
   expect(instance.module).to.equal(logger || console);
   // check proxy log methods
@@ -18,11 +18,11 @@ function validateConstructor(logger, testProxy) {
 
 console.log('depend on default constructor values');
 let obj = validateConstructor();
-expect(obj.name).to.equal('console');
+expect(obj.moduleName).to.equal('console');
 
 console.log('explicitly pass console');
 obj = validateConstructor(console);
-expect(obj.name).to.equal('console');
+expect(obj.moduleName).to.equal('console');
 
 console.log('uses custom logger module when proxy is passed in');
 const FakeLogger = {
@@ -39,7 +39,7 @@ obj = validateConstructor(FakeLogger, {
   levelIntHash: { info: 30, 30: 30 },
   getLogMethods: () => { return [{ name: 'info', level: 30 }]; },
 });
-expect(obj.name).to.equal('unknown')
+expect(obj.moduleName).to.equal('unknown')
 expect(obj.module).to.haveOwnProperty('fake');
 
 // used specified custom proxy
