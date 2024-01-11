@@ -1,79 +1,78 @@
 import { expect } from 'chai';
-// Import the Hindsight class from src/index.js
 import Hindsight from '../index.js';
 
-console.log("\nlogIntake tests...");
-
-function setupLogTest(metadata, ...payload) {
-  const hindsight = new Hindsight({});
-
-  hindsight.logIntake(metadata, ...payload);
-  hindsight._dir(hindsight.logTables);
-  return hindsight;
-}
-
-function expectValidLogTable(hsInstance, tableName) {
-  expect(hsInstance.logTables).to.haveOwnProperty(tableName);
-  expect(hsInstance.logTables[tableName]).to.be.an('object');
-  return hsInstance.logTables[tableName];
-}
-function expectValidLogLine(logTable, expectedData) {
-  const sessionId = expectedData.context.sessionId;
-  expect(logTable).to.haveOwnProperty(sessionId);
-
-  const logLine = logTable[sessionId][expectedData.context.sequence];
-  expect(logLine.context.timestamp).to.be.a('number');
-  const { timestamp, ...staticData } = logLine.context;
-  if (expectedData.context.timestamp) {
-    expect(timestamp).to.equal(expectedData.context.timestamp);
-    delete expectedData.context.timestamp;
+describe('Hindsight logIntake Tests', function() {
+  function setupLogTest(metadata, ...payload) {
+    const hindsight = new Hindsight({});
+    hindsight._logIntake(metadata, ...payload);
+    return hindsight;
   }
-  expect(staticData).to.deep.eql(expectedData.context);
-  expect(logLine.payload).to.deep.eql(expectedData.payload);
-}
 
-console.log('Typical metadata and payload are added correctly to logTables');
-let hindsight = setupLogTest(
-  { sessionId: '123456', name: 'debug' },
-  { message: 'Test log message' }
-);
+  function expectValidLogTable(hsInstance, tableName) {
+    expect(hsInstance.logTables).to.haveOwnProperty(tableName);
+    expect(hsInstance.logTables[tableName]).to.be.an('object');
+    return hsInstance.logTables[tableName];
+  }
 
-let testTable = expectValidLogTable(hindsight, 'debug');
-expectValidLogLine(testTable, {
-    context: { sessionId: '123456', sequence: 1 },
-    payload: [{ message: 'Test log message' }]  
-});
+  function expectValidLogLine(logTable, expectedData) {
+    const sessionId = expectedData.context.sessionId;
+    expect(logTable).to.haveOwnProperty(sessionId);
 
-console.log('Multiple payload args are added correctly to logTables');
-hindsight = setupLogTest(
-  { sessionId: '123456', name: 'trace' },
-  [],
-  "testing",
-  { message: 'Test log message' }
-);
+    const logLine = logTable[sessionId][expectedData.context.sequence];
+    expect(logLine.context.timestamp).to.be.a('number');
+    if (expectedData.context.timestamp) {
+      expect(logLine.context.timestamp).to.equal(expectedData.context.timestamp);
+    }
+    expect(logLine.payload).to.deep.eql(expectedData.payload);
+  }
 
-testTable = expectValidLogTable(hindsight, 'trace');
-expectValidLogLine(testTable, {
-    context: { sessionId: '123456', sequence: 1 },
-    payload: [[], "testing", { message: 'Test log message' }]
-});
+  it('should add typical metadata and payload correctly to logTables', function() {
+    const hindsight = setupLogTest(
+      { sessionId: '123456', name: 'debug' },
+      { message: 'Test log message' }
+    );
 
-console.log('Default context values are used when no metadata is provided');
-hindsight = setupLogTest({ name: 'debug' }, { message: 'Test log message' });
+    const testTable = expectValidLogTable(hindsight, 'debug');
+    expectValidLogLine(testTable, {
+      context: { sessionId: '123456', sequence: 1 },
+      payload: [{ message: 'Test log message' }]
+    });
+  });
 
-testTable = expectValidLogTable(hindsight, 'debug');
-hindsight._dir({testTable});
-expectValidLogLine(testTable, {
-    context: { sessionId: hindsight.instanceId, sequence: 1 },
-    payload: [{ message: 'Test log message' }]  
-});
+  it('should add multiple payload arguments correctly to logTables', function() {
+    const hindsight = setupLogTest(
+      { sessionId: '123456', name: 'trace' },
+      [],
+      "testing",
+      { message: 'Test log message' }
+    );
 
-console.log('Specific timestamp provided is used');
-const then = Date.now() - 1000;
-hindsight = setupLogTest({ name: 'debug', timestamp: then }, { message: 'Test log message' });
+    const testTable = expectValidLogTable(hindsight, 'trace');
+    expectValidLogLine(testTable, {
+      context: { sessionId: '123456', sequence: 1 },
+      payload: [[], "testing", { message: 'Test log message' }]
+    });
+  });
 
-testTable = expectValidLogTable(hindsight, 'debug');
-expectValidLogLine(testTable, {
-    context: { timestamp: then, sessionId: hindsight.instanceId, sequence: 1 },
-    payload: [{ message: 'Test log message' }]  
+  it('should use default context values when no metadata is provided', function() {
+    const hindsight = setupLogTest({ name: 'debug' }, { message: 'Test log message' });
+
+    const testTable = expectValidLogTable(hindsight, 'debug');
+    expectValidLogLine(testTable, {
+      context: { sessionId: hindsight.instanceId, sequence: 1 },
+      payload: [{ message: 'Test log message' }]
+    });
+  });
+
+  it('should use a specific timestamp when provided', function() {
+    const then = Date.now() - 1000;
+    const hindsight = setupLogTest({ name: 'debug', timestamp: then }, { message: 'Test log message' });
+    hindsight._dir(hindsight.logTables.debug[hindsight.instanceId]);
+
+    const testTable = expectValidLogTable(hindsight, 'debug');
+    expectValidLogLine(testTable, {
+      context: { timestamp: then, sessionId: hindsight.instanceId, sequence: 1 },
+      payload: [{ message: 'Test log message' }]
+    });
+  });
 });

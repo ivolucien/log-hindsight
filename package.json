@@ -6,8 +6,8 @@
   "files": "src/**/*",
   "type": "module",
   "scripts": {
-    "test": "for file in src/tests/*.js; do echo \"\nRunning $file\"; node $file; done",
-    "test-debug": "for file in src/tests/*.js; do echo \"\nRunning $file\"; HINDSIGHT_LOG_LEVEL=trace node $file; done"
+    "test": "mocha 'src/tests/**/*.test.js'",
+    "test-debug": "HINDSIGHT_LOG_LEVEL=trace mocha 'src/tests/**/*.test.js'"
   },
   "repository": {
     "type": "git",
@@ -26,6 +26,7 @@
   },
   "homepage": "https://github.com/ivolucien/log-hindsight#readme",
   "devDependencies": {
-    "chai": "^4.3.7"
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0"
   }
 }

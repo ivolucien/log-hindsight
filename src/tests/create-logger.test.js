@@ -1,22 +1,35 @@
 import { expect } from 'chai';
 import Hindsight from '../index.js';
 
-console.log("\ncreateLogger tests...");
+describe('Hindsight createLogger Tests', function() {
+  let originalHindsight, newLogger;
 
-// hindsight with all default options creates a proxied console
-let obj = new Hindsight();
-expect(obj.moduleName).to.equal('console');
+  beforeEach(function() {
+    originalHindsight = new Hindsight();
+    newLogger = originalHindsight.createLogger();
+  });
 
-let logger = obj.createLogger();
-logger._dir(logger);
-expect(logger.moduleName).to.equal('console');
-expect(logger.module).to.equal(console);
-expect(logger.proxy).to.equal(obj.proxy);
-expect(logger.logMethods).to.deep.equal(obj.logMethods);
-expect(logger.logTables).to.deep.equal(obj.logTables);
-expect(logger.instanceId).to.not.equal(obj.instanceId);
+  it('should create a new logger with default options as a proxied console', function() {
+    expect(originalHindsight.moduleName).to.equal('console');
+    expect(newLogger.moduleName).to.equal('console');
+  });
 
-logger.logMethods.forEach((method) => {
-  expect(logger[method.name]).to.be.a('function');
-  expect(logger.logTables[method.name]).to.be.an('object');
+  it('should create a new logger with properties matching the original', function() {
+    expect(newLogger.module).to.equal(console);
+    expect(newLogger.proxy).to.equal(originalHindsight.proxy);
+    expect(newLogger.logMethods).to.deep.equal(originalHindsight.logMethods);
+    newLogger.proxy.logTableNames.forEach((name) => {
+      const expectedSessionEntry = { [newLogger.instanceId]: { counter: 1} };
+      expect(newLogger.logTables[name]).to.deep.equal(expectedSessionEntry);
+    });
+  });
+
+  it('should create a new logger with a unique instanceId and functional log methods', function() {
+    expect(newLogger.instanceId).to.not.equal(originalHindsight.instanceId);
+
+    newLogger.logMethods.forEach((method) => {
+      expect(newLogger[method.name]).to.be.a('function');
+      expect(newLogger.logTables[method.name]).to.be.an('object');
+    });
+  });
 });
