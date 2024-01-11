@@ -83,13 +83,13 @@ export default class Hindsight {
 
     this.proxy.logTableNames.forEach((name) => {
       // initialize log table for log level name
-      const sessionRecord = {};
-      sessionRecord[this.instanceId] = { counter: 1 };
-      this.logTables[name] = sessionRecord;
+      const defaultSessionRecord = {};
+      defaultSessionRecord[this.instanceId] = { counter: 1 };
+      this.logTables[name] = defaultSessionRecord;
 
       // populate this proxy log method
       this[name] = (...payload) => {
-        this._logIntake({ name, level: this.logMethods[name].level }, payload);
+        this._logIntake({ name, level: this.proxy.levelIntHash[name] }, payload);
       };
     });
   }
@@ -182,7 +182,7 @@ export default class Hindsight {
     // todo: move to a getRank() method?
     const threshold = this.proxy.levelIntHash[this.rules?.write?.level];
     const lineLevel = this.proxy.levelIntHash[context.level || name];
-    console.dir({ threshold, lineLevel });
+    this._debug({ threshold, lineLevel });
     if (lineLevel < threshold) {
       return 'defer';
     } else {
