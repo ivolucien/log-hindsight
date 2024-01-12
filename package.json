@@ -29,5 +29,8 @@
     "chai": "^4.3.7",
     "chai-spies": "^1.1.0",
     "mocha": "^10.2.0"
+  },
+  "dependencies": {
+    "ringbufferjs": "^2.0.0"
   }
 }

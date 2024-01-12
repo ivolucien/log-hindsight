@@ -1,4 +1,5 @@
 import ConsoleProxy from "./console-proxy.js";
+import RingBuffer from 'ringbufferjs';
 
 export const LOGGER_PROXY_MAP = {
   console: ConsoleProxy,
@@ -7,7 +8,13 @@ export const LOGGER_PROXY_MAP = {
 
 const DEFAULT_LOGGER = 'console';
 let instanceId = 0; // Base counter for formatted instanceID as 'id' + instanceId integer
-
+const defaultRules = {
+  write: { level: 'info' },
+  trim: {
+    lineCountAbove: 10 * 1000,
+    lineOlderThanMs: 70 * 1000, // 70 seconds, typical max API call time + 10s
+  },
+};
 /**
  * Hindsight is a logger proxy that handles log lines and conditional output options.
  * It provides functionality to wrap loggers and track tables of log lines, including metadata.
@@ -17,7 +24,7 @@ let instanceId = 0; // Base counter for formatted instanceID as 'id' + instanceI
  *
  * @class
  * @param {Object} [logger=console] - The logger object to be used for logging.
- * @param {Object} [rules={}] - The rules object used to configure conditional logging.
+ * @param {Object} [rules={...}] - The rules used to configure conditional logging.
  * @param {Object} [proxyOverride=null] - The test proxy object to be used for testing purposes.
  */
 export default class Hindsight {
@@ -31,15 +38,17 @@ export default class Hindsight {
   rules;
   logMethods;
   logTables;
+  logIndices;
 
-  constructor({ logger = console, rules = { write: { level: logger.level || 'info' } }, proxyOverride = null } = {}) {
+  constructor({ logger = console, rules = defaultRules, proxyOverride = null } = {}) {
     this._setupModuleLogMethods();
     this._debug('Hindsight constructor called');
 
     this._instanceId = instanceId++; // Used for default sessionId
     this.moduleName = ConsoleProxy.isConsole(logger) ? 'console' : 'unknown';
     this.module = logger;
-    this.rules = rules;
+    this.rules = { ...defaultRules, ...rules };
+    this.logIndices = { sequence: new RingBuffer(this.rules.trim.lineCountAbove) };
     this.proxy = proxyOverride || LOGGER_PROXY_MAP[this.moduleName];
 
     this._setupProxyLogging();
@@ -120,6 +129,19 @@ export default class Hindsight {
   }
 
   /**
+   * Trims the log tables based on the configured rules. The method iterates over
+   * each trimming criteria defined in the rules, calling the corresponding private
+   * trim method for each criteria with the currently configured trim rules.
+   */
+  applyTrimRules() {
+    Object.keys(this.rules.trim).forEach((criteria) => {
+      this._debug({ criteria });
+      const trimMethod = this['_trimBy' + criteria];
+      trimMethod.call(this, this.rules.trim[criteria]);
+    });
+  }
+
+  /**
    * Retrieves the log table associated with the given name and session ID.
    * If the table does not exist, a new table object is created and returned.
    *
@@ -159,16 +181,15 @@ export default class Hindsight {
     };
     // todo: support options and/or format properties in metadata
     // todo: write sanitize function to remove sensitive data from log lines, if specified
-    // console.log({ name, instanceId: this.instanceId, context, payload });
 
     const action = this._selectAction(name, context, payload);
     if (action === 'discard') { return; }
 
     if (action === 'write') {
-      this.module[name](...payload); // pass to the original logger method
+      this.module[name](...payload); // pass to the original logger method now
     } else if (action === 'defer') {
       this._deferToTable(name, context, payload);
-    } // todo: purge function to remove this log line's session table
+    } // todo: purge function to remove this log line from the table by session ID and age
     
     // todo: trim function to keep to specified data limits (cullLogLines?)
   }
@@ -179,7 +200,7 @@ export default class Hindsight {
       return 'discard'; // log nothing if called with no payload
     }
 
-    // todo: move to a getRank() method?
+    // todo: move to a get intLevel() property?
     const threshold = this.proxy.levelIntHash[this.rules?.write?.level];
     const lineLevel = this.proxy.levelIntHash[context.level || name];
     this._debug({ threshold, lineLevel });
@@ -188,7 +209,6 @@ export default class Hindsight {
     } else {
       return 'write';
     }
-    // todo: handle rules to purge log line
   }
 
   _deferToTable(name, context, payload) {
@@ -197,10 +217,37 @@ export default class Hindsight {
     context.sequence = table.counter++;
     // assign log line in sequence
     table[context.sequence] = {
-      context,
+      context: { name, ...context },
       payload
     };
-  }    
+    this.logIndices.sequence.enq(table[context.sequence]); // supports lineCountAbove trim rule
+
+    setTimeout(() => this.applyTrimRules(), 0); // don't delay caller code
+  }
+
+  _trimBylineCountAbove(){
+    // no-op since the ringbufferjs does this automatically
+  }
+  // call this via setTimeout to avoid caller code delay
+  _trimBylineOlderThanMs() {
+    const oldestAllowed = Date.now() - this.rules.trim.lineOlderThanMs;
+
+    while (this.logIndices.sequence.peek().context.timestamp < oldestAllowed) {
+      // remove line from table
+      const line = this.logIndices.sequence.peek();
+      this._debug({ line });
+      const table = this.logTables[line.context.name];
+      delete table[line.context.sessionId][line.context.sequence];
+
+      // remove session table if empty
+      if (Object.keys(table[line.context.sessionId]).length === 0) {
+        delete this.logTables[line.context.name][line.context.sessionId];
+      }
+      // remove sequence index reference
+      this.logIndices.sequence.deq();
+      // todo: support expiration callback for each line removed?
+    }
+  }
 }
 
 // todo: add trim / purge function to keep to specified data limits (cullLogLines?)
