@@ -142,6 +142,40 @@ export default class Hindsight {
   }
 
   /**
+   * Iterates over each log table, calling the provided task function for every session object
+   *
+   * @param {string} sessionId - set of log lines to apply the rule to.
+   *
+   */
+  writeSessionLines(sessionId, levelCutoff) {
+    let sessionLines = [];
+    this.proxy.logTableNames.forEach((name) => {
+      const meetsThreshold = this.proxy.levelIntHash[name] >= levelCutoff;
+      if (!meetsThreshold) {
+        return;;
+      }
+      const levelLines = this.logTables[name][sessionId];
+      let sequenceCounter = 0;
+      while (sequenceCounter < levelLines.counter) {
+        const line = sessionLines[sequenceCounter++]; // todo: consider using ring buffer for session table
+        if (line == null || line.context == null) {
+          continue;
+        }
+
+        line.context.name = name; // add name to context for writing chronologically across levels
+        sessionLines.push(line);
+      }
+    });
+
+    // Sort sessionLines by line.context.timestamp in ascending order
+    sessionLines.sort((a, b) => a.context.timestamp - b.context.timestamp);
+
+    sessionLines.forEach((line) => {
+      this._writeLine(line.context.name, line.context, line.payload);
+    });
+  }
+
+  /**
    * Retrieves the log table associated with the given name and session ID.
    * If the table does not exist, a new table object is created and returned.
    *
@@ -186,7 +220,7 @@ export default class Hindsight {
     if (action === 'discard') { return; }
 
     if (action === 'write') {
-      this.module[name](...payload); // pass to the original logger method now
+      this._writeLine(name, context, payload);
     } else if (action === 'defer') {
       this._deferToTable(name, context, payload);
     } // todo: purge function to remove this log line from the table by session ID and age
@@ -211,23 +245,43 @@ export default class Hindsight {
     }
   }
 
+  // todo: support removing the log line from the log table, for now just mark as written
+  /**
+   * Writes a log line to the original logger method if it hasn't been written before.
+   *
+   * @param {string} name - The logger method to call, such as 'info' or 'error'.
+   * @param {object} context - The context object to track if the log line has been written.
+   * @param {Array} payload - The arguments to pass to the original logger method.
+   */
+  _writeLine(name, context, payload) {
+    if (context.written !== true) {
+      context.written = true;
+      this.module[name](...payload); // pass to the original logger method now
+    }
+  }
+
   _deferToTable(name, context, payload) {
     // get corresponding log table
     const table = this._getTable(name, context.sessionId);
     context.sequence = table.counter++;
-    // assign log line in sequence
+    // assign log line in sequence to the session table
     table[context.sequence] = {
       context: { name, ...context },
       payload
     };
-    this.logIndices.sequence.enq(table[context.sequence]); // supports lineCountAbove trim rule
-
-    setTimeout(() => this.applyTrimRules(), 0); // don't delay caller code
+    this.logIndices.sequence.enq(table[context.sequence]); // add to sequence index
   }
 
-  _trimBylineCountAbove(){
+  // todo: write eviction callback for each line exceeding the max line count, prune from log table
+  _trimCorrespondingLineFromTable(context) {
+    const table = this.logTables[context.name];
+    delete table[context.sessionId][context.sequence];
+  }
+
+  _trimBylineCountAbove() {
     // no-op since the ringbufferjs does this automatically
   }
+
   // call this via setTimeout to avoid caller code delay
   _trimBylineOlderThanMs() {
     const oldestAllowed = Date.now() - this.rules.trim.lineOlderThanMs;
