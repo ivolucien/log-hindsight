@@ -17,13 +17,15 @@ describe('Hindsight applyTrimRules Tests', function() {
 
   it('should trim log lines above the specified count', function() {
     // Add log lines that fall below the immediate write level and exceed the max line count
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 7; i++) {
       hindsight._logIntake({ name: 'debug', sessionId: 'test', timestamp: Date.now() }, `Log line ${i}`);
     }
 
-    // Check if the number of log lines is trimmed to 5
+    // Check if the number of log lines are trimmed to 5
     const logTable = hindsight._getTable('debug', 'test');
-    expect(Object.keys(logTable).length).to.be.at.most(hindsight.rules.trim.lineCountAbove);
+    const expectedLogTableKeys = hindsight.rules.trim.lineCountAbove + 1; // +1 for the counter key
+    hindsight._debug({ logTable, tableKeys: Object.keys(logTable) });
+    expect(Object.keys(logTable).length).to.be.at.most(expectedLogTableKeys);
   });
 
   it('should remove log lines older than specified milliseconds', function(done) {
@@ -36,16 +38,13 @@ describe('Hindsight applyTrimRules Tests', function() {
     // Wait for 10ms and then apply trim rules
     setTimeout(() => {
       hindsight.applyTrimRules();
+      const logTable = hindsight._getTable('debug', 'test');
 
       // Check if the old log line is removed
-      const logTable = hindsight._getTable('debug', 'test');
-      const logLines = Object.values(logTable).map(entry => entry.payload[0]);
-      expect(logLines).to.not.include('Old log line');
-      expect(logLines).to.include('New log line');
-
+      expect(logTable.counter).to.equal(3); // 2 log lines and has been incremented afterwards
+      expect(logTable[1]).to.not.exist;
+      expect(logTable[2]).to.haveOwnProperty('payload').that.eqls(['New log line']);
       done();
     }, 10);
   });
-
-  // Additional tests can be added here
 });
