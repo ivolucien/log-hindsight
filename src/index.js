@@ -42,13 +42,18 @@ export default class Hindsight {
 
   constructor({ logger = console, rules = defaultRules, proxyOverride = null } = {}) {
     this._setupModuleLogMethods();
-    this._debug('Hindsight constructor called');
+    this._debug('Hindsight constructor called', { ...rules, override: typeof proxyOverride });
 
     this._instanceId = instanceId++; // Used for default sessionId
     this.moduleName = ConsoleProxy.isConsole(logger) ? 'console' : 'unknown';
     this.module = logger;
     this.rules = { ...defaultRules, ...rules };
-    this.logIndices = { sequence: new RingBuffer(this.rules.trim.lineCountAbove) };
+    this.logIndices = {
+      sequence: new RingBuffer(
+        this.rules.trim.lineCountAbove, // max total of all log lines
+        (line) => this._trimCorrespondingDataFromTable(line.context) // eviction callback for when buffer is full
+      )
+    };
     this.proxy = proxyOverride || LOGGER_PROXY_MAP[this.moduleName];
 
     this._setupProxyLogging();
@@ -142,7 +147,7 @@ export default class Hindsight {
   }
 
   /**
-   * Iterates over each log table, calling the provided task function for every session object
+   * Iterates over log level table not below levelCutoff and wries all lines for the given session ID.
    *
    * @param {string} sessionId - set of log lines to apply the rule to.
    *
@@ -270,16 +275,21 @@ export default class Hindsight {
       payload
     };
     this.logIndices.sequence.enq(table[context.sequence]); // add to sequence index
+    this._debug({ name, payloads: Object.values(table) });
   }
 
   // todo: write eviction callback for each line exceeding the max line count, prune from log table
-  _trimCorrespondingLineFromTable(context) {
-    const table = this.logTables[context.name];
-    delete table[context.sessionId][context.sequence];
+  _trimCorrespondingDataFromTable(context) {
+    const sessionTable = this._getTable(context.name, context.sessionId);
+    delete sessionTable[context.sequence];
+    if (Object.keys(sessionTable).length === 1 && typeof sessionTable.counter === 'number') {
+      delete table[context.sessionId];
+    }
   }
 
   _trimBylineCountAbove() {
-    // no-op since the ringbufferjs does this automatically
+    // no-op for the ringbufferjs as it maintains max size and triggers the eviction callback when full
+    this._debug('Trimming by line count above threshold', { maxLineCount: this.rules.trim.lineCountAbove });
   }
 
   // call this via setTimeout to avoid caller code delay
@@ -290,13 +300,10 @@ export default class Hindsight {
       // remove line from table
       const line = this.logIndices.sequence.peek();
       this._debug({ line });
-      const table = this.logTables[line.context.name];
-      delete table[line.context.sessionId][line.context.sequence];
 
-      // remove session table if empty
-      if (Object.keys(table[line.context.sessionId]).length === 0) {
-        delete this.logTables[line.context.name][line.context.sessionId];
-      }
+      // remove line from other structures
+      this._trimCorrespondingDataFromTable(line.context);
+
       // remove sequence index reference
       this.logIndices.sequence.deq();
       // todo: support expiration callback for each line removed?
