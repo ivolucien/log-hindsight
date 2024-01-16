@@ -47,4 +47,19 @@ describe('Hindsight applyTrimRules Tests', function() {
       done();
     }, 10);
   });
+
+  it('should correctly choose immediate or deferred write based on custom write rule', function() {
+    const customRules = { write: { level: 'warn' } }; // Only warn and above are written immediately
+    const hindsight = new Hindsight({ rules: customRules });
+
+    hindsight._logIntake({ name: 'info', sessionId: 'test' }, 'Deferred log line');
+    hindsight._logIntake({ name: 'warn', sessionId: 'test' }, 'Immediate log line');;
+
+    const infoTable = hindsight._getTable('info', 'test');
+    const warnTable = hindsight._getTable('warn', 'test');
+
+    hindsight._debug({ sequenceIndex: hindsight.logIndices.sequence._elements });
+    expect(infoTable['1']).to.exist; // 'info' is below 'warn', so it should be deferred
+    expect(warnTable['1']).to.not.exist; // 'warn' is at or above 'warn', so it should be written immediately
+  });
 });

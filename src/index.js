@@ -222,6 +222,7 @@ export default class Hindsight {
     // todo: write sanitize function to remove sensitive data from log lines, if specified
 
     const action = this._selectAction(name, context, payload);
+    this._debug({ action, context });
     if (action === 'discard') { return; }
 
     if (action === 'write') {
@@ -275,7 +276,7 @@ export default class Hindsight {
       payload
     };
     this.logIndices.sequence.enq(table[context.sequence]); // add to sequence index
-    this._debug({ name, payloads: Object.values(table) });
+    this._debug({ ...context, deferTargetTable: table });
   }
 
   // todo: write eviction callback for each line exceeding the max line count, prune from log table
