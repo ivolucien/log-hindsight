@@ -6,7 +6,7 @@ export const LOGGER_PROXY_MAP = {
   // Add support for other loggers like bunyan, pino, winston, etc.
 };
 
-const DEFAULT_LOGGER = 'console';
+const DEFAULT_LOGGER = console;
 let instanceId = 0; // Base counter for formatted instanceID as 'id' + instanceId integer
 const defaultRules = {
   write: { level: 'info' },
@@ -15,10 +15,14 @@ const defaultRules = {
     lineOlderThanMs: 70 * 1000, // 70 seconds, typical max API call time + 10s
   },
 };
+let defaultHindsightParent = null;
+
+let HindsightInstances = {};
+
 /**
  * Hindsight is a logger proxy that handles log lines and conditional output options.
  * It provides functionality to wrap loggers and track tables of log lines, including metadata.
- * Hindsight log tables are organized by log level names, session IDs, and sequence numbers.
+ * Hindsight log tables are organized by log level names and sequence numbers.
  * It supports customization options for logging configuration and log level, and allows for
  * trimming or purging of log data to maintain specified data limits.
  *
@@ -36,17 +40,30 @@ export default class Hindsight {
   moduleName;
   proxy;
   rules;
+  perLineFields = {};
   logMethods;
   logTables;
   logIndices;
 
-  constructor({ logger = console, rules = defaultRules, proxyOverride = null } = {}) {
-    this._setupModuleLogMethods();
-    this._debug('Hindsight constructor called', { ...rules, override: typeof proxyOverride });
+  static getOrCreateChild({ perLineFields = {}, parentHindsight = defaultHindsightParent } = {}) {
+    const instanceSignature = JSON.stringify({
+      ...(defaultHindsightParent || {}).perLineFields,
+      ...perLineFields
+    });
+    if (HindsightInstances[instanceSignature]) {
+      return HindsightInstances[instanceSignature];
+    }
+    return parentHindsight.child({ perLineFields });
+  }
 
-    this._instanceId = instanceId++; // Used for default sessionId
+  constructor({ logger = DEFAULT_LOGGER, perLineFields = {}, rules = defaultRules, proxyOverride = null } = {}) {
+    this._setupModuleLogMethods();
+    this._debug('Hindsight constructor called', { ...rules, proxyOverride });
+
+    this._instanceId = instanceId++; // Used for debugging
     this.moduleName = ConsoleProxy.isConsole(logger) ? 'console' : 'unknown';
     this.module = logger;
+    this.perLineFields = perLineFields;
     this.rules = { ...defaultRules, ...rules };
     this.logIndices = {
       sequence: new RingBuffer(
@@ -55,8 +72,12 @@ export default class Hindsight {
       )
     };
     this.proxy = proxyOverride || LOGGER_PROXY_MAP[this.moduleName];
+    this._debug({ this: this });
 
     this._setupProxyLogging();
+    defaultHindsightParent = defaultHindsightParent || this;
+    const instanceSignature = JSON.stringify({ perLineFields });
+    HindsightInstances[instanceSignature] = HindsightInstances[instanceSignature] || this; // add to instances map?
   }
 
   /**
@@ -95,40 +116,35 @@ export default class Hindsight {
     this.logTables = {};
     this.logMethods = this.proxy.getLogMethods();
 
-    this.proxy.logTableNames.forEach((name) => {
+    this.proxy.logTableNames.forEach((levelName) => {
       // initialize log table for log level name
-      const defaultSessionRecord = {};
-      defaultSessionRecord[this.instanceId] = { counter: 1 };
-      this.logTables[name] = defaultSessionRecord;
+      this.logTables[levelName] = { counter: 1 };
 
       // populate this proxy log method
-      this[name] = (...payload) => {
-        this._logIntake({ name, level: this.proxy.levelIntHash[name] }, payload);
-      };
+      this[levelName] = (...payload) => {
+        this._logIntake({ name: levelName, level: this.proxy.levelIntHash[levelName] }, payload);
+      }
     });
   }
 
   /**
-   * Creates a new Hindsight logger instance with the same logger and proxy.
+   * Creates a Hindsight logger instance using `this` as a base, overriding perLineFields and/or rules.
+   * The new instance will have a child logger instance if the original logger has child functionality.
    * @returns {Hindsight} A new Hindsight instance.
    */
-  createLogger() {
-    const logger = this.module;
-    return new Hindsight({ logger, proxyOverride: this.proxy });
+  child({ perLineFields = {}, rules = {} } = {}) {
+    const { module: logger, proxy: proxyOverride } = this;
+    const combinedFields = { ...this.perLineFields, ...perLineFields };
+    const combinedRules = { ...this.rules, ...rules };
+
+    const child = logger.child ? logger.child(perLineFields) : logger; // use child factory if available
+    return new Hindsight({ child, perLineFields: combinedFields, proxyOverride, rules: combinedRules });
   }
 
-  /**
-   * Gets the current module log level.
-   * @returns {number} The current log level of the module.
-   */
+  // Get and set the current module log level, this is separate from the proxied logger.
   get moduleLogLevel() {
     return this._moduleLogLevel;
   }
-
-  /**
-   * Sets the module log level, this is separate from the proxied logger.
-   * @param {string} level - The new log level to set for the module.
-   */
   set moduleLogLevel(level) {
     this._moduleLogLevel = this.proxy.levelIntHash[level] || this.moduleLogLevel;
   }
@@ -147,57 +163,46 @@ export default class Hindsight {
   }
 
   /**
-   * Iterates over log level table not below levelCutoff and wries all lines for the given session ID.
+   * Iterates over log level table not below levelCutoff and wries all lines.
    *
-   * @param {string} sessionId - set of log lines to apply the rule to.
+   * @param {string} levelCutoff - minimum required log level to write.
    *
    */
-  writeSessionLines(sessionId, levelCutoff) {
-    let sessionLines = [];
-    this.proxy.logTableNames.forEach((name) => {
-      const meetsThreshold = this.proxy.levelIntHash[name] >= levelCutoff;
+  writeLines(levelCutoff) {
+    let linesToWrite = [];
+    this.proxy.logTableNames.forEach((levelName) => {
+      const meetsThreshold = this.proxy.levelIntHash[levelName] >= levelCutoff;
       if (!meetsThreshold) {
-        return;;
+        return;
       }
-      const levelLines = this.logTables[name][sessionId];
+      const levelLines = this.logTables[levelName];
       let sequenceCounter = 0;
       while (sequenceCounter < levelLines.counter) {
-        const line = sessionLines[sequenceCounter++]; // todo: consider using ring buffer for session table
-        if (line == null || line.context == null) {
-          continue;
+        const line = levelLines[sequenceCounter++];
+        if (line != null && line.context != null) {
+          line.context.name = levelName; // add name to context for writing chronologically across levels
+          linesToWrite.push(line);
         }
-
-        line.context.name = name; // add name to context for writing chronologically across levels
-        sessionLines.push(line);
       }
     });
 
-    // Sort sessionLines by line.context.timestamp in ascending order
-    sessionLines.sort((a, b) => a.context.timestamp - b.context.timestamp);
+    // Sort lines by line.context.timestamp in ascending order
+    linesToWrite.sort((a, b) => a.context.timestamp - b.context.timestamp);
 
-    sessionLines.forEach((line) => {
+    linesToWrite.forEach((line) => {
       this._writeLine(line.context.name, line.context, line.payload);
     });
   }
 
   /**
-   * Retrieves the log table associated with the given name and session ID.
+   * Retrieves the log table associated with the given name.
    * If the table does not exist, a new table object is created and returned.
    *
-   * @param {string} name - The name of the table, such as 'info' or 'error'.
-   * @param {string} [sessionId] - The session ID, defaults to the hindsight instance ID.
-   * @returns {object} The log line table associated with the given name and session ID.
+   * @param {string} levelName - The name of the table, such as 'info' or 'error'.
+   * @returns {object} The log line table associated with the given log level name.
    */
-  _getTable(name, sessionId = this.instanceId) {
-    // get or add log level table
-    const namedTable = this.logTables[name] || {};
-    this.logTables[name] = namedTable;
-
-    // get or add session table
-    namedTable[sessionId] = namedTable[sessionId] || { counter: 1};
-    // console.dir({ namedTable, counter: namedTable[sessionId].counter });
-
-    return namedTable[sessionId];
+  _getTable(levelName) {
+    return this.logTables[levelName];
   }
 
   /**
@@ -214,7 +219,6 @@ export default class Hindsight {
       ...context
     } = {
       name: 'info',
-      sessionId: this.instanceId, // instance ID acts as a bucket for all non-session logs
       timestamp: Date.now(),
       ...metadata
     };
@@ -229,9 +233,7 @@ export default class Hindsight {
       this._writeLine(name, context, payload);
     } else if (action === 'defer') {
       this._deferToTable(name, context, payload);
-    } // todo: purge function to remove this log line from the table by session ID and age
-    
-    // todo: trim function to keep to specified data limits (cullLogLines?)
+    }
   }
 
   _selectAction(name, context, payload) {
@@ -240,7 +242,7 @@ export default class Hindsight {
       return 'discard'; // log nothing if called with no payload
     }
 
-    // todo: move to a get intLevel() property?
+    // todo: move to a getIntLevel() property?
     const threshold = this.proxy.levelIntHash[this.rules?.write?.level];
     const lineLevel = this.proxy.levelIntHash[context.level || name];
     this._debug({ threshold, lineLevel });
@@ -268,9 +270,9 @@ export default class Hindsight {
 
   _deferToTable(name, context, payload) {
     // get corresponding log table
-    const table = this._getTable(name, context.sessionId);
+    const table = this._getTable(name);
     context.sequence = table.counter++;
-    // assign log line in sequence to the session table
+    // assign log line in sequence to the log level table
     table[context.sequence] = {
       context: { name, ...context },
       payload
@@ -281,11 +283,8 @@ export default class Hindsight {
 
   // todo: write eviction callback for each line exceeding the max line count, prune from log table
   _trimCorrespondingDataFromTable(context) {
-    const sessionTable = this._getTable(context.name, context.sessionId);
-    delete sessionTable[context.sequence];
-    if (Object.keys(sessionTable).length === 1 && typeof sessionTable.counter === 'number') {
-      delete table[context.sessionId];
-    }
+    const levelTable = this._getTable(context.name);
+    delete levelTable[context.sequence];
   }
 
   _trimBylineCountAbove() {
@@ -319,21 +318,19 @@ export default class Hindsight {
 hindsight.logTables format
 {
   info: {
-    sessionId<any|instanceId>: {
-      sequence<integer>: {
-        context: {
-          timestamp,
-          sessionId<any>,
-          sequence<integer>,
-          ...<any>
-        },
-        payload: [
-          // examples, not required
-          { message: * },
-          err<Error>,
-          ...<any>
-        ]
-      }
+    sequence<integer>: {
+      context: {
+        name<string>,
+        timestamp<number>,
+        sequence<integer>,
+        ...<any>
+      },
+      payload: [
+        // examples, not required
+        { message: * },
+        err<Error>,
+        ...<any>
+      ]
     }
   }
 }
