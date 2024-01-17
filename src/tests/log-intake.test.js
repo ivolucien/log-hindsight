@@ -15,10 +15,7 @@ describe('Hindsight logIntake Tests', function() {
   }
 
   function expectValidLogLine(logTable, expectedData) {
-    const sessionId = expectedData.context.sessionId;
-    expect(logTable).to.haveOwnProperty(sessionId);
-
-    const logLine = logTable[sessionId][expectedData.context.sequence];
+    const logLine = logTable[expectedData.context.sequence];
     expect(logLine.context.timestamp).to.be.a('number');
     if (expectedData.context.timestamp) {
       expect(logLine.context.timestamp).to.equal(expectedData.context.timestamp);
