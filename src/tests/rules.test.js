@@ -4,7 +4,7 @@ import Hindsight from '../index.js';
 describe('Hindsight Rules Tests', function() {
   it('should set the default rule for a Hindsight instance correctly', function() {
     const hindsight = new Hindsight();
-    expect(hindsight.rules).to.eql({ 
+    expect(hindsight.rules).to.eql({
       write: { level: 'info' },
       trim: {
         lineCountAbove: 10 * 1000,
@@ -45,7 +45,7 @@ describe('Hindsight Rules Tests', function() {
     hindsight.debug('Fourth line'); // This should trigger trimming
 
     // Assuming hindsight object has a method to get the current log lines count
-    expect(hindsight.logIndices.sequence.size()).to.equal(customRules.trim.lineCountAbove);
+    expect(hindsight.logTables.indices.sequence.size()).to.equal(customRules.trim.lineCountAbove);
   });
 
   it('should remove log lines older than trim.lineOlderThanMs setting', function(done) {
@@ -64,8 +64,8 @@ describe('Hindsight Rules Tests', function() {
       hindsight.applyTrimRules(); // normally these are async, but we want to test immediately
 
       // Assuming hindsight object has a method to get log lines with their timestamps
-      const linesRemaining = hindsight.logIndices.sequence.size();
-      const line = hindsight.logIndices.sequence.peek();
+      const linesRemaining = hindsight.logTables.indices.sequence.size();
+      const line = hindsight.logTables.indices.sequence.peek();
       const currentTime = Date.now();
 
       // Validate that no log lines are older than the current time minus lineOlderThanMs

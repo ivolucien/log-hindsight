@@ -63,7 +63,7 @@ describe('Hindsight logIntake Tests', function() {
   it('should use a specific timestamp when provided', function() {
     const then = Date.now() - 1000;
     const hindsight = setupLogTest({ name: 'debug', timestamp: then }, { message: 'Test log message' });
-    hindsight._dir(hindsight.logTables.get('debug')[hindsight.instanceId]);
+    hindsight._debug(hindsight.logTables.get('debug'));
 
     const testTable = expectValidLogTable(hindsight, 'debug');
     expectValidLogLine(testTable, {

@@ -58,7 +58,7 @@ describe('Hindsight applyTrimRules Tests', function() {
     const infoTable = hindsight.logTables.get('info', 'test');
     const warnTable = hindsight.logTables.get('warn', 'test');
 
-    hindsight._debug({ sequenceIndex: hindsight.logIndices.sequence._elements });
+    hindsight._debug({ sequenceIndexSize: hindsight.logTables.indices.sequence.size() });
     expect(infoTable['1']).to.exist; // 'info' is below 'warn', so it should be deferred
     expect(warnTable['1']).to.not.exist; // 'warn' is at or above 'warn', so it should be written immediately
   });
