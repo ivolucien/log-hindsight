@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import Hindsight from '../index.js';
 
-describe('Hindsight Getter Tests', function() {
-  describe('instanceId Getter', function() {
+describe('Hindsight getter tests', function() {
+  describe('instanceId getter', function() {
     it('should return the correct value', function() {
       const hindsight = new Hindsight({});
       const expectedId = 'id' + hindsight._instanceId;
@@ -18,14 +18,13 @@ describe('Hindsight Getter Tests', function() {
     });
   });
 
-  describe('getTable Method', function() {
+  describe('logTables.get method', function() {
     it('should return the correct log table', function() {
       const hindsight = new Hindsight();
       const firstId = hindsight._instanceId;
       hindsight._debug(hindsight.logTables);
       hindsight.proxy.logTableNames.forEach((name) => {
-        const sessionId = hindsight.instanceId;
-        expect(hindsight._getTable(name, sessionId)).to.deep.eql({ counter: 1 });
+        expect(hindsight.logTables.get(name)).to.deep.eql({ counter: 1 });
       });
 
       const hindsight2 = new Hindsight();

@@ -9,9 +9,8 @@ describe('Hindsight logIntake Tests', function() {
   }
 
   function expectValidLogTable(hsInstance, tableName) {
-    expect(hsInstance.logTables).to.haveOwnProperty(tableName);
-    expect(hsInstance.logTables[tableName]).to.be.an('object');
-    return hsInstance.logTables[tableName];
+    expect(hsInstance.logTables.get(tableName)).to.be.an('object');
+    return hsInstance.logTables.get(tableName);
   }
 
   function expectValidLogLine(logTable, expectedData) {
@@ -64,7 +63,7 @@ describe('Hindsight logIntake Tests', function() {
   it('should use a specific timestamp when provided', function() {
     const then = Date.now() - 1000;
     const hindsight = setupLogTest({ name: 'debug', timestamp: then }, { message: 'Test log message' });
-    hindsight._dir(hindsight.logTables.debug[hindsight.instanceId]);
+    hindsight._dir(hindsight.logTables.get('debug')[hindsight.instanceId]);
 
     const testTable = expectValidLogTable(hindsight, 'debug');
     expectValidLogLine(testTable, {

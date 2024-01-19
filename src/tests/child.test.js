@@ -19,7 +19,7 @@ describe('Hindsight child tests', function() {
     expect(newLogger.proxy).to.equal(originalHindsight.proxy);
     expect(newLogger.logMethods).to.deep.equal(originalHindsight.logMethods);
     newLogger.proxy.logTableNames.forEach((name) => {
-      expect(newLogger.logTables[name]).to.deep.equal({ counter: 1 });
+      expect(newLogger.logTables.get(name)).to.deep.equal({ counter: 1 });
     });
   });
 
@@ -28,7 +28,7 @@ describe('Hindsight child tests', function() {
 
     newLogger.logMethods.forEach((method) => {
       expect(newLogger[method.name]).to.be.a('function');
-      expect(newLogger.logTables[method.name]).to.be.an('object');
+      expect(newLogger.logTables.get(method.name)).to.be.an('object');
     });
   });
 
@@ -50,15 +50,15 @@ describe('Hindsight child tests', function() {
   describe('Hindsight getOrCreateChild Tests', function() {
     it('should return the same instance for the same perLineFields', function() {
       const perLineFields = { key: 'value' };
-      const child1 = Hindsight.getOrCreateChild({ perLineFields });
-      const child2 = Hindsight.getOrCreateChild({ perLineFields });
+      const child1 = Hindsight.getOrCreateChild(perLineFields, originalHindsight);
+      const child2 = Hindsight.getOrCreateChild(perLineFields, originalHindsight);
 
       expect(child1).to.equal(child2); // WIP - test breaks here on instanceId, wassup?
     });
 
     it('should return different instances for different perLineFields', function() {
-      const child1 = Hindsight.getOrCreateChild({ perLineFields: { key: 'value1' } });
-      const child2 = Hindsight.getOrCreateChild({ perLineFields: { key: 'value2' } });
+      const child1 = Hindsight.getOrCreateChild({ key: 'value1' }, originalHindsight);
+      const child2 = Hindsight.getOrCreateChild({ key: 'value2' }, originalHindsight);
 
       expect(child1).to.not.equal(child2);
     });

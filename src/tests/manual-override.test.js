@@ -22,7 +22,7 @@ describe('Hindsight applyTrimRules Tests', function() {
     }
 
     // Check if the number of log lines are trimmed to 5
-    const logTable = hindsight._getTable('debug', 'test');
+    const logTable = hindsight.logTables.get('debug');
     const expectedLogTableKeys = hindsight.rules.trim.lineCountAbove + 1; // +1 for the counter key
     hindsight._debug({ logTable, tableKeys: Object.keys(logTable) });
     expect(Object.keys(logTable).length).to.be.at.most(expectedLogTableKeys);
@@ -38,7 +38,7 @@ describe('Hindsight applyTrimRules Tests', function() {
     // Wait for 10ms and then apply trim rules
     setTimeout(() => {
       hindsight.applyTrimRules();
-      const logTable = hindsight._getTable('debug', 'test');
+      const logTable = hindsight.logTables.get('debug', 'test');
 
       // Check if the old log line is removed
       expect(logTable.counter).to.equal(3); // 2 log lines and has been incremented afterwards
@@ -53,10 +53,10 @@ describe('Hindsight applyTrimRules Tests', function() {
     const hindsight = new Hindsight({ rules: customRules });
 
     hindsight._logIntake({ name: 'info', sessionId: 'test' }, 'Deferred log line');
-    hindsight._logIntake({ name: 'warn', sessionId: 'test' }, 'Immediate log line');;
+    hindsight._logIntake({ name: 'warn', sessionId: 'test' }, 'Immediate log line');
 
-    const infoTable = hindsight._getTable('info', 'test');
-    const warnTable = hindsight._getTable('warn', 'test');
+    const infoTable = hindsight.logTables.get('info', 'test');
+    const warnTable = hindsight.logTables.get('warn', 'test');
 
     hindsight._debug({ sequenceIndex: hindsight.logIndices.sequence._elements });
     expect(infoTable['1']).to.exist; // 'info' is below 'warn', so it should be deferred
