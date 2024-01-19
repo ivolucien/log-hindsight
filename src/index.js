@@ -1,5 +1,9 @@
-import ConsoleProxy from "./console-proxy.js";
 import RingBuffer from 'ringbufferjs';
+
+import ConsoleProxy from "./console-proxy.js";
+import LogTableManager from './log-tables.js';
+
+// todo: clean up debug logging before release
 
 export const LOGGER_PROXY_MAP = {
   console: ConsoleProxy,
@@ -41,19 +45,23 @@ export default class Hindsight {
   proxy;
   rules;
   perLineFields = {};
+  logTables = new LogTableManager();
   logMethods;
-  logTables;
   logIndices;
 
-  static getOrCreateChild({ perLineFields = {}, parentHindsight = defaultHindsightParent } = {}) {
-    const instanceSignature = JSON.stringify({
-      ...(defaultHindsightParent || {}).perLineFields,
-      ...perLineFields
-    });
-    if (HindsightInstances[instanceSignature]) {
-      return HindsightInstances[instanceSignature];
+  static getInstanceIndexString(perLineFields = {}) {
+    return JSON.stringify(perLineFields);
+  }
+  static getOrCreateChild(perLineFields, parentHindsight) {
+    const indexKey = Hindsight.getInstanceIndexString(perLineFields);
+    console.debug({ indexKey, perLineFields });
+    if (HindsightInstances[indexKey]) {
+      return HindsightInstances[indexKey];
     }
     return parentHindsight.child({ perLineFields });
+  }
+  getOrCreateChild(perLineFields) {
+    return Hindsight.getOrCreateChild(perLineFields, this);
   }
 
   constructor({ logger = DEFAULT_LOGGER, perLineFields = {}, rules = defaultRules, proxyOverride = null } = {}) {
@@ -72,11 +80,11 @@ export default class Hindsight {
       )
     };
     this.proxy = proxyOverride || LOGGER_PROXY_MAP[this.moduleName];
-    this._debug({ this: this });
-
     this._setupProxyLogging();
+
     defaultHindsightParent = defaultHindsightParent || this;
-    const instanceSignature = JSON.stringify({ perLineFields });
+    const instanceSignature = Hindsight.getInstanceIndexString(perLineFields);
+    this._debug('constructor', { instanceSignature });
     HindsightInstances[instanceSignature] = HindsightInstances[instanceSignature] || this; // add to instances map?
   }
 
@@ -113,13 +121,9 @@ export default class Hindsight {
    * @private
    */
   _setupProxyLogging() {
-    this.logTables = {};
     this.logMethods = this.proxy.getLogMethods();
 
     this.proxy.logTableNames.forEach((levelName) => {
-      // initialize log table for log level name
-      this.logTables[levelName] = { counter: 1 };
-
       // populate this proxy log method
       this[levelName] = (...payload) => {
         this._logIntake({ name: levelName, level: this.proxy.levelIntHash[levelName] }, payload);
@@ -137,8 +141,13 @@ export default class Hindsight {
     const combinedFields = { ...this.perLineFields, ...perLineFields };
     const combinedRules = { ...this.rules, ...rules };
 
-    const child = logger.child ? logger.child(perLineFields) : logger; // use child factory if available
-    return new Hindsight({ child, perLineFields: combinedFields, proxyOverride, rules: combinedRules });
+    const innerChild = logger.child ? logger.child(perLineFields) : logger; // use child factory if available
+    return new Hindsight({
+      logger: innerChild,
+      perLineFields: combinedFields,
+      proxyOverride,
+      rules: combinedRules
+    });
   }
 
   // Get and set the current module log level, this is separate from the proxied logger.
@@ -175,7 +184,7 @@ export default class Hindsight {
       if (!meetsThreshold) {
         return;
       }
-      const levelLines = this.logTables[levelName];
+      const levelLines = this.logTables.get(levelName);
       let sequenceCounter = 0;
       while (sequenceCounter < levelLines.counter) {
         const line = levelLines[sequenceCounter++];
@@ -192,17 +201,6 @@ export default class Hindsight {
     linesToWrite.forEach((line) => {
       this._writeLine(line.context.name, line.context, line.payload);
     });
-  }
-
-  /**
-   * Retrieves the log table associated with the given name.
-   * If the table does not exist, a new table object is created and returned.
-   *
-   * @param {string} levelName - The name of the table, such as 'info' or 'error'.
-   * @returns {object} The log line table associated with the given log level name.
-   */
-  _getTable(levelName) {
-    return this.logTables[levelName];
   }
 
   /**
@@ -270,20 +268,20 @@ export default class Hindsight {
 
   _deferToTable(name, context, payload) {
     // get corresponding log table
-    const table = this._getTable(name);
-    context.sequence = table.counter++;
-    // assign log line in sequence to the log level table
-    table[context.sequence] = {
+    const logEntry = {
       context: { name, ...context },
       payload
     };
-    this.logIndices.sequence.enq(table[context.sequence]); // add to sequence index
-    this._debug({ ...context, deferTargetTable: table });
+    const sequence = this.logTables.addLine(name, logEntry);
+
+    this.logIndices.sequence.enq(logEntry); // add to sequence index
+    this._debug({ ...context, seqRetVal: sequence });
   }
 
   // todo: write eviction callback for each line exceeding the max line count, prune from log table
   _trimCorrespondingDataFromTable(context) {
-    const levelTable = this._getTable(context.name);
+    const levelTable = this.logTables.get(context.name);
+    this._debug('deleting corresponding line from table', { context });
     delete levelTable[context.sequence];
   }
 
@@ -316,7 +314,7 @@ export default class Hindsight {
 
 /*
 hindsight.logTables format
-{
+LogTableManager: {
   info: {
     sequence<integer>: {
       context: {
