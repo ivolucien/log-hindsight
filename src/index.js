@@ -1,5 +1,3 @@
-import RingBuffer from 'ringbufferjs';
-
 import ConsoleProxy from "./console-proxy.js";
 import LogTableManager from './log-tables.js';
 
@@ -19,7 +17,6 @@ const defaultRules = {
     lineOlderThanMs: 70 * 1000, // 70 seconds, typical max API call time + 10s
   },
 };
-let defaultHindsightParent = null;
 
 let HindsightInstances = {};
 
@@ -45,9 +42,8 @@ export default class Hindsight {
   proxy;
   rules;
   perLineFields = {};
-  logTables = new LogTableManager();
+  logTables;
   logMethods;
-  logIndices;
 
   static getInstanceIndexString(perLineFields = {}) {
     return JSON.stringify(perLineFields);
@@ -64,7 +60,12 @@ export default class Hindsight {
     return Hindsight.getOrCreateChild(perLineFields, this);
   }
 
-  constructor({ logger = DEFAULT_LOGGER, perLineFields = {}, rules = defaultRules, proxyOverride = null } = {}) {
+  constructor({
+    logger = DEFAULT_LOGGER,
+    perLineFields = {},
+    rules = defaultRules,
+    proxyOverride = null
+  } = {}) {
     this._setupModuleLogMethods();
     this._debug('Hindsight constructor called', { ...rules, proxyOverride });
 
@@ -73,16 +74,10 @@ export default class Hindsight {
     this.module = logger;
     this.perLineFields = perLineFields;
     this.rules = { ...defaultRules, ...rules };
-    this.logIndices = {
-      sequence: new RingBuffer(
-        this.rules.trim.lineCountAbove, // max total of all log lines
-        (line) => this._trimCorrespondingDataFromTable(line.context) // eviction callback for when buffer is full
-      )
-    };
+    this.logTables = new LogTableManager({ maxLineCount: this.rules.trim.lineCountAbove });
     this.proxy = proxyOverride || LOGGER_PROXY_MAP[this.moduleName];
     this._setupProxyLogging();
 
-    defaultHindsightParent = defaultHindsightParent || this;
     const instanceSignature = Hindsight.getInstanceIndexString(perLineFields);
     this._debug('constructor', { instanceSignature });
     HindsightInstances[instanceSignature] = HindsightInstances[instanceSignature] || this; // add to instances map?
@@ -97,9 +92,11 @@ export default class Hindsight {
     const levelName = process.env.HINDSIGHT_LOG_LEVEL || 'error';
     this._moduleLogLevel = ConsoleProxy.levelIntHash[levelName];
 
-    ['trace', 'dir', 'debug', 'info', 'warn', 'error'].forEach((name) => {
+    // only using standard console methods for now
+    ['trace', 'debug', 'info', 'warn', 'error'].forEach((name) => {
       this['_' + name] = (...payload) => {
-        const lineLevel = ConsoleProxy.levelIntHash[name];
+        // todo: use configured logger's methods instead of console
+        const lineLevel = ConsoleProxy.levelIntHash[name]; // using subset of console methods
         if (lineLevel >= this._moduleLogLevel) {
           console[name](...payload);
         }
@@ -166,8 +163,9 @@ export default class Hindsight {
   applyTrimRules() {
     Object.keys(this.rules.trim).forEach((criteria) => {
       this._debug({ criteria });
-      const trimMethod = this['_trimBy' + criteria];
-      trimMethod.call(this, this.rules.trim[criteria]);
+      const trimMethod = this.logTables['trimBy' + criteria];
+      // call the private trim method with the current trim rule value
+      trimMethod.call(this.logTables, this.rules.trim[criteria]);
     });
   }
 
@@ -199,7 +197,9 @@ export default class Hindsight {
     linesToWrite.sort((a, b) => a.context.timestamp - b.context.timestamp);
 
     linesToWrite.forEach((line) => {
+      // todo: consider making this look async to avoid blocking the event loop for large log tables
       this._writeLine(line.context.name, line.context, line.payload);
+      this.logTables.deleteLine(line.context);
     });
   }
 
@@ -272,40 +272,7 @@ export default class Hindsight {
       context: { name, ...context },
       payload
     };
-    const sequence = this.logTables.addLine(name, logEntry);
-
-    this.logIndices.sequence.enq(logEntry); // add to sequence index
-    this._debug({ ...context, seqRetVal: sequence });
-  }
-
-  // todo: write eviction callback for each line exceeding the max line count, prune from log table
-  _trimCorrespondingDataFromTable(context) {
-    const levelTable = this.logTables.get(context.name);
-    this._debug('deleting corresponding line from table', { context });
-    delete levelTable[context.sequence];
-  }
-
-  _trimBylineCountAbove() {
-    // no-op for the ringbufferjs as it maintains max size and triggers the eviction callback when full
-    this._debug('Trimming by line count above threshold', { maxLineCount: this.rules.trim.lineCountAbove });
-  }
-
-  // call this via setTimeout to avoid caller code delay
-  _trimBylineOlderThanMs() {
-    const oldestAllowed = Date.now() - this.rules.trim.lineOlderThanMs;
-
-    while (this.logIndices.sequence.peek().context.timestamp < oldestAllowed) {
-      // remove line from table
-      const line = this.logIndices.sequence.peek();
-      this._debug({ line });
-
-      // remove line from other structures
-      this._trimCorrespondingDataFromTable(line.context);
-
-      // remove sequence index reference
-      this.logIndices.sequence.deq();
-      // todo: support expiration callback for each line removed?
-    }
+    this.logTables.addLine(name, logEntry);
   }
 }
 
