@@ -1,16 +1,19 @@
 import { expect } from 'chai';
 import Hindsight from '../index.js';
+import { getConfig } from '../config.js';
 
 describe('Hindsight Rules Tests', function() {
+  let envConfig;
+
+  before(() => {
+    envConfig = getConfig();
+  });
+
   it('should set the default rule for a Hindsight instance correctly', function() {
     const hindsight = new Hindsight();
-    expect(hindsight.rules).to.eql({
-      write: { level: 'info' },
-      trim: {
-        lineCountAbove: 10 * 1000,
-        lineOlderThanMs: 70 * 1000
-      }
-    });
+    const { rules: expectedRules } = envConfig; // get defaults for the current NODE_ENV
+
+    expect(hindsight.rules).to.eql(expectedRules);
   });
 
   it('should overwrite default write rule when provided', function() {
@@ -28,6 +31,16 @@ describe('Hindsight Rules Tests', function() {
     };
     const hindsight = new Hindsight({ rules: customRules });
     expect(hindsight.rules.trim).to.eql(customRules.trim);
+  });
+
+  it('should overwrite subsest of default rules, keeping default for unspecified rules', function() {
+    const customRules = {
+      trim: { lineCountAbove: 5000 }
+    };
+    const hindsight = new Hindsight({ rules: customRules });
+    expect(hindsight.rules.trim.lineCountAbove).to.eql(customRules.trim.lineCountAbove); // modified
+    expect(hindsight.rules.write).to.eql(envConfig.rules.write); // default
+    expect(hindsight.rules.trim.lineOlderThanMs).to.eql(envConfig.rules.trim.lineOlderThanMs); // default
   });
 
   it('should limit the total number of log lines stored based on trim.lineCountAbove setting', function() {

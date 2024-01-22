@@ -6,7 +6,7 @@ describe('Hindsight child tests', function() {
 
   beforeEach(function() {
     originalHindsight = new Hindsight();
-    newLogger = originalHindsight.child();
+    newLogger = originalHindsight.child({ perLineFields: { key: 'value' }});
   });
 
   it('should create a new logger with default options as a proxied console', function() {

@@ -32,6 +32,6 @@ export default {
   },
 
   isConsole(obj) {
-    return obj instanceof console.Console; // todo: support browsers w/ no .Console?
+    return obj != null && obj instanceof console.Console; // todo: support browsers w/ no .Console?
   },
 }
