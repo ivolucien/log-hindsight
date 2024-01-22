@@ -1,3 +1,4 @@
+import { getConfig } from './config.js';
 import ConsoleProxy from "./console-proxy.js";
 import LogTableManager from './log-tables.js';
 
@@ -10,13 +11,6 @@ export const LOGGER_PROXY_MAP = {
 
 const DEFAULT_LOGGER = console;
 let instanceId = 0; // Base counter for formatted instanceID as 'id' + instanceId integer
-const defaultRules = {
-  write: { level: 'info' },
-  trim: {
-    lineCountAbove: 10 * 1000,
-    lineOlderThanMs: 70 * 1000, // 70 seconds, typical max API call time + 10s
-  },
-};
 
 let HindsightInstances = {};
 
@@ -60,26 +54,24 @@ export default class Hindsight {
     return Hindsight.getOrCreateChild(perLineFields, this);
   }
 
-  constructor({
-    logger = DEFAULT_LOGGER,
-    perLineFields = {},
-    rules = defaultRules,
-    proxyOverride = null
-  } = {}) {
-    this._setupModuleLogMethods();
-    this._debug('Hindsight constructor called', { ...rules, proxyOverride });
+  constructor( config = {}, perLineFields = {} ) {
+    const { logger, rules, proxyOverride } = getConfig(config);
 
-    this._instanceId = instanceId++; // Used for debugging
+    this._setupModuleLogMethods();
+    this._debug('Hindsight constructor called', { config, proxyOverride, rules, perLineFields });
+
+    this._instanceId = instanceId++; // instance ordinal, primarily for debugging
     this.moduleName = ConsoleProxy.isConsole(logger) ? 'console' : 'unknown';
     this.module = logger;
+    this.rules = rules;
     this.perLineFields = perLineFields;
-    this.rules = { ...defaultRules, ...rules };
     this.logTables = new LogTableManager({ maxLineCount: this.rules.trim.lineCountAbove });
     this.proxy = proxyOverride || LOGGER_PROXY_MAP[this.moduleName];
-    this._setupProxyLogging();
 
     const instanceSignature = Hindsight.getInstanceIndexString(perLineFields);
-    this._debug('constructor', { instanceSignature });
+    this._debug('constructor', { instanceSignature, moduleName: this.moduleName });
+    this._setupProxyLogging();
+
     HindsightInstances[instanceSignature] = HindsightInstances[instanceSignature] || this; // add to instances map?
   }
 
@@ -141,10 +133,10 @@ export default class Hindsight {
     const innerChild = logger.child ? logger.child(perLineFields) : logger; // use child factory if available
     return new Hindsight({
       logger: innerChild,
-      perLineFields: combinedFields,
       proxyOverride,
       rules: combinedRules
-    });
+      }, combinedFields
+    );
   }
 
   // Get and set the current module log level, this is separate from the proxied logger.
