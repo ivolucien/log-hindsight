@@ -12,6 +12,7 @@ export const LOGGER_PROXY_MAP = {
 const DEFAULT_LOGGER = console;
 let instanceId = 0; // Base counter for formatted instanceID as 'id' + instanceId integer
 
+// todo: make singleton session handling optional, and add a way to remove instances
 let HindsightInstances = {};
 
 /**
