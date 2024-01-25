@@ -118,6 +118,7 @@ export default class Hindsight {
       this[levelName] = (...payload) => {
         this._logIntake({ name: levelName, level: this.proxy.levelIntHash[levelName] }, payload);
       }
+      this[levelName].writeCounter = 0; // initialize counter for this log method, for tests
     });
   }
 
@@ -255,6 +256,7 @@ export default class Hindsight {
   _writeLine(name, context, payload) {
     if (context.written !== true) {
       context.written = true;
+      this[name].writeCounter++;
       this.module[name](...payload); // pass to the original logger method now
     }
   }
