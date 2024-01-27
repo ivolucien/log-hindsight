@@ -53,7 +53,7 @@ describe('Hindsight child tests', function() {
       const child1 = Hindsight.getOrCreateChild(perLineFields, originalHindsight);
       const child2 = Hindsight.getOrCreateChild(perLineFields, originalHindsight);
 
-      expect(child1).to.equal(child2); // WIP - test breaks here on instanceId, wassup?
+      expect(child1).to.equal(child2);
     });
 
     it('should return different instances for different perLineFields', function() {

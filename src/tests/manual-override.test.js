@@ -13,6 +13,7 @@ describe('Hindsight applyTrimRules Tests', function() {
       }
     };
     hindsight = new Hindsight({ rules: customRules });
+    hindsight.logTables.sequenceIndex.deqN(hindsight.logTables.sequenceIndex.size()); // Clear line index
   });
 
   it('should trim log lines above the specified count', function() {
@@ -58,7 +59,7 @@ describe('Hindsight applyTrimRules Tests', function() {
     const infoTable = hindsight.logTables.get('info', 'test');
     const warnTable = hindsight.logTables.get('warn', 'test');
 
-    hindsight._debug({ sequenceIndexSize: hindsight.logTables.indices.sequence.size() });
+    hindsight._debug({ sequenceIndexSize: hindsight.logTables.sequenceIndex.size() });
     expect(infoTable['1']).to.exist; // 'info' is below 'warn', so it should be deferred
     expect(warnTable['1']).to.not.exist; // 'warn' is at or above 'warn', so it should be written immediately
   });

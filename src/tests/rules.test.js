@@ -58,7 +58,7 @@ describe('Hindsight Rules Tests', function() {
     hindsight.debug('Fourth line'); // This should trigger trimming
 
     // Assuming hindsight object has a method to get the current log lines count
-    expect(hindsight.logTables.indices.sequence.size()).to.equal(customRules.trim.lineCountAbove);
+    expect(hindsight.logTables.sequenceIndex.size()).to.equal(customRules.trim.lineCountAbove);
   });
 
   it('should remove log lines older than trim.lineOlderThanMs setting', function(done) {
@@ -77,8 +77,8 @@ describe('Hindsight Rules Tests', function() {
       hindsight.applyTrimRules(); // normally these are async, but we want to test immediately
 
       // Assuming hindsight object has a method to get log lines with their timestamps
-      const linesRemaining = hindsight.logTables.indices.sequence.size();
-      const line = hindsight.logTables.indices.sequence.peek();
+      const linesRemaining = hindsight.logTables.sequenceIndex.size();
+      const line = hindsight.logTables.sequenceIndex.peek();
       const currentTime = Date.now();
 
       // Validate that no log lines are older than the current time minus lineOlderThanMs
