@@ -165,6 +165,7 @@ export default class Hindsight {
 
   /**
    * Iterates over log level table not below levelCutoff and wries all lines.
+   * Call to write a session's history, as a child logger has all of one session's logging.
    *
    * @param {string} levelCutoff - minimum required log level to write.
    *
