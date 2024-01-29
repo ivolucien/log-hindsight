@@ -64,18 +64,22 @@ class LogTableManager {
 
   // call this via setTimeout to avoid caller code delay
   trimBylineOlderThanMs(maxLineAgeMs) {
-    const oldestAllowed = Date.now() - maxLineAgeMs;
+    const expiration = Date.now() - maxLineAgeMs;
 
-    while (sequenceIndex.peek().context.timestamp < oldestAllowed) {
-      // remove line from table
-      const line = sequenceIndex.peek();
-
-      // remove line from other structures
-      LogTableManager._deleteLineFromTable(line.context);
-
+    while (!sequenceIndex.isEmpty() && sequenceIndex.peek()?.context?.timestamp < expiration) {
       // remove sequence index reference
+      const line = sequenceIndex.deq();
+      // and from the log table
+      LogTableManager._deleteLineFromTable(line.context);
+      // todo? support expiration callback parameter for each line removed
+    }
+  }
+
+  trimByAlreadyWritten() {
+    while (!sequenceIndex.isEmpty() && sequenceIndex.peek()?.context?.written) {
       sequenceIndex.deq();
-      // todo: support expiration callback for each line removed?
+      // and from the log table
+      LogTableManager._deleteLineFromTable(line.context);
     }
   }
 }
