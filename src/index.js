@@ -1,6 +1,7 @@
 import { getConfig } from './config.js';
 import ConsoleProxy from "./console-proxy.js";
 import LogTableManager from './log-tables.js';
+import QuickLRU from 'quick-lru';
 
 // todo: clean up debug logging before release
 
@@ -13,7 +14,7 @@ const DEFAULT_LOGGER = console;
 let instanceId = 0; // Base counter for formatted instanceID as 'id' + instanceId integer
 
 // todo: make singleton session handling optional, and add a way to remove instances
-let HindsightInstances = {};
+let HindsightInstances;
 
 /**
  * Hindsight is a logger proxy that handles log lines and conditional output options.
@@ -40,16 +41,20 @@ export default class Hindsight {
   logTables;
   logMethods;
 
+  static initSingletonTracking(instanceLimits = getConfig().instanceLimits) {
+    HindsightInstances = new QuickLRU(instanceLimits); // can use in tests to reset state
+  }
+  static getInstances() { // for manual instance management and test use
+    return HindsightInstances;
+  }
   static getInstanceIndexString(perLineFields = {}) {
     return JSON.stringify(perLineFields);
   }
   static getOrCreateChild(perLineFields, parentHindsight) {
     const indexKey = Hindsight.getInstanceIndexString(perLineFields);
-    console.debug({ indexKey, perLineFields });
-    if (HindsightInstances[indexKey]) {
-      return HindsightInstances[indexKey];
-    }
-    return parentHindsight.child({ perLineFields });
+    parentHindsight._debug({ indexKey, perLineFields });
+    const existingInstance = HindsightInstances.get(indexKey);
+    return existingInstance || parentHindsight.child({ perLineFields });
   }
   getOrCreateChild(perLineFields) {
     return Hindsight.getOrCreateChild(perLineFields, this);
@@ -73,7 +78,10 @@ export default class Hindsight {
     this._debug('constructor', { instanceSignature, moduleName: this.moduleName });
     this._setupProxyLogging();
 
-    HindsightInstances[instanceSignature] = HindsightInstances[instanceSignature] || this; // add to instances map?
+    if (HindsightInstances == null) {
+      Hindsight.initSingletonTracking(config?.instanceLimits);
+    }
+    HindsightInstances.set(instanceSignature, this); // add to instances map?
   }
 
   /**
@@ -133,12 +141,14 @@ export default class Hindsight {
     const combinedRules = { ...this.rules, ...rules };
 
     const innerChild = logger.child ? logger.child(perLineFields) : logger; // use child factory if available
-    return new Hindsight({
+    const childConfig = {
+      instanceLimits: { maxAge: HindsightInstances.maxAge, maxSize: HindsightInstances.maxSize },
       logger: innerChild,
       proxyOverride,
-      rules: combinedRules
-      }, combinedFields
-    );
+      rules: combinedRules,
+    };
+    this._debug({ childConfig, combinedFields });
+    return new Hindsight(childConfig, combinedFields);
   }
 
   // Get and set the current module log level, this is separate from the proxied logger.

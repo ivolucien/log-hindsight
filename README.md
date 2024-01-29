@@ -13,11 +13,14 @@ _Please use labels for bugs, questions and feature suggestions_
 
  ## Planned core features for v0.1 - still flexible on these
 
- * Queue some or all log data to an in-memory queue
+ * Queue some or all log data to an in-memory buffer
    * simple support for console logger
-   * drop queued log data based on identifier or age
+   * write level rule to determine what gets buffered and what gets written immediately
+   * drop queued log data based on max quantity, identifier or age
    * store original log events by sequence, timestamp and log level
    * associate log data with a task or session identifier
+   * provide singleton logger access based on session ID or other unique ID
+   * configure logger instance lifespan via max (LRU) count or age
 
  ## Tentatively planned for v0.2
    * support one additional logger module out of the box, likely winston or bunyan
