@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import Hindsight from '../index.js';
 import { getConfig } from '../config.js';
+import LogTableManager from '../log-tables.js';
 
 describe('Hindsight Rules Tests', function() {
   let envConfig;
@@ -49,6 +50,7 @@ describe('Hindsight Rules Tests', function() {
         lineCountAbove: 3, // Assuming we want to keep only 3 log lines
       }
     };
+    LogTableManager.initGlobalIndex(customRules.trim.lineCountAbove); // reset static line index
     const hindsight = new Hindsight({ rules: customRules });
 
     // Simulate logging to store lines

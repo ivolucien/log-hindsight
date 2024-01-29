@@ -10,6 +10,7 @@ describe('Hindsight Constructor Tests', function() {
     info() { console.error('FakeLogger info() called') },
   };
 
+  // this function incidentally verifies that falsey caller values don't override defaults
   function validateConstructor(logger, proxyOverride) {
     const instance = new Hindsight({ logger, proxyOverride });
     expect(instance).to.be.instanceOf(Hindsight);

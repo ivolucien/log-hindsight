@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import Hindsight from '../index.js';
+import LogTableManager from '../log-tables.js';
 
 describe('Hindsight applyTrimRules Tests', function() {
   let hindsight;
@@ -12,6 +13,7 @@ describe('Hindsight applyTrimRules Tests', function() {
         lineOlderThanMs: 50 // 50 milliseconds
       }
     };
+    LogTableManager.initGlobalIndex(customRules.trim.lineCountAbove); // reset static line index
     hindsight = new Hindsight({ rules: customRules });
     hindsight.logTables.sequenceIndex.deqN(hindsight.logTables.sequenceIndex.size()); // Clear line index
   });

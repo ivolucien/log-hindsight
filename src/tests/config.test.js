@@ -16,7 +16,7 @@ describe('Configuration Tests', function() {
       });
 
       it('should have all required fields', function() {
-        expect(config).to.have.all.keys('logger', 'moduleLogLevel', 'rules', 'proxyOverride');
+        expect(config).to.have.all.keys('instanceLimits', 'logger', 'moduleLogLevel', 'rules', 'proxyOverride');
       });
 
       it('should have a valid logger', function() {
