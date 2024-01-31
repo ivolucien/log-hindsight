@@ -6,20 +6,10 @@ log-hindsight adds retroactive and conditional logic to standard logging, allowi
 By the first release log-hindsight will support multiple logging modules, but at this early stage of development it only supports the console logger.
 
 ## Installation
-
-You can install log-hindsight using npm or yarn:
-
-Using npm:
-```bash
-npm install log-hindsight
-```
-
-Or:
-```bash
-yarn add log-hindsight
-```
+_Module is not ready for alpha release yet. It's in early development and not yet published to npm._
 
 ## Quickstart
+_This is a quickstart guide for the current state of development. It will be updated as the module matures._
 
 ```javascript
 import Hindsight from 'log-hindsight';
