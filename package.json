@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "test": "NODE_ENV=test mocha 'src/tests/**/*.test.js'",
-    "test-debug": "NODE_ENV=test-trace HINDSIGHT_LOG_LEVEL=trace mocha 'src/tests/**/*.test.js'"
+    "test-dev": "NODE_ENV=development mocha 'src/tests/**/*.test.js'"
   },
   "repository": {
     "type": "git",

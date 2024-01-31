@@ -50,7 +50,7 @@ export const envConfigs = {
       }
     }
   },
-  'test-trace': {
+  development: {
     ...defaultConfig,
     instanceLimits: {
       maxSize: 5,
@@ -65,8 +65,12 @@ export const envConfigs = {
       }
     }
   },
-  'test-stress': {
+  stress: {
      ...defaultConfig,
+     instanceLimits: {
+      maxSize: 50 * 1000,
+      maxAge: 130 * 1000,
+    },
      rules: {
       write: { level: 'error' },
       trim: {
