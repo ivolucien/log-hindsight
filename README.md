@@ -23,10 +23,14 @@ logger.trace('Starting work...'); // Buffered for possible future write
 
 // ...later in your application
 if (errorCondition) {
-  logger.writeLines('debug'); // Write previously buffered lines as context for the error
+  logger.writeLines('debug'); // Write lines >= debug log level as context for the error
   logger.error(new Error('Yikes!')); // Written immediately by default log level
 }
 ```
+
+## Overview and Use Cases
+
+
 
 ## Configuration Options
 
