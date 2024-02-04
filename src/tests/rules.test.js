@@ -26,8 +26,8 @@ describe('Hindsight Rules Tests', function() {
   it('should overwrite default lineLimits rules when provided', function() {
     const customRules = {
       lineLimits: {
-        maxCount: 5000,
-        maxAgeMs: 60000
+        maxSize: 5000,
+        maxAge: 60000
       }
     };
     const hindsight = new Hindsight({ rules: customRules });
@@ -36,21 +36,21 @@ describe('Hindsight Rules Tests', function() {
 
   it('should overwrite subsest of default rules, keeping default for unspecified rules', function() {
     const customRules = {
-      lineLimits: { maxCount: 5000 }
+      lineLimits: { maxSize: 5000 }
     };
     const hindsight = new Hindsight({ rules: customRules });
-    expect(hindsight.rules.lineLimits.maxCount).to.eql(customRules.lineLimits.maxCount); // modified
+    expect(hindsight.rules.lineLimits.maxSize).to.eql(customRules.lineLimits.maxSize); // modified
     expect(hindsight.rules.write).to.eql(envConfig.rules.write); // default
-    expect(hindsight.rules.lineLimits.maxAgeMs).to.eql(envConfig.rules.lineLimits.maxAgeMs); // default
+    expect(hindsight.rules.lineLimits.maxAge).to.eql(envConfig.rules.lineLimits.maxAge); // default
   });
 
-  it('should limit the total number of log lines stored based on lineLimits.maxCount setting', function() {
+  it('should limit the total number of log lines stored based on lineLimits.maxSize setting', function() {
     const customRules = {
       lineLimits: {
-        maxCount: 3, // Assuming we want to keep only 3 log lines
+        maxSize: 3, // Assuming we want to keep only 3 log lines
       }
     };
-    LogTableManager.initGlobalIndex(customRules.lineLimits.maxCount); // reset static line index
+    LogTableManager.initGlobalIndex(customRules.lineLimits.maxSize); // reset static line index
     const hindsight = new Hindsight({ rules: customRules });
 
     // Simulate logging to store lines
@@ -60,13 +60,13 @@ describe('Hindsight Rules Tests', function() {
     hindsight.debug('Fourth line'); // This should trigger limits
 
     // Assuming hindsight object has a method to get the current log lines count
-    expect(hindsight.logTables.sequenceIndex.size()).to.equal(customRules.lineLimits.maxCount);
+    expect(hindsight.logTables.sequenceIndex.size()).to.equal(customRules.lineLimits.maxSize);
   });
 
-  it('should remove log lines older than lineLimits.maxAgeMs setting', function(done) {
+  it('should remove log lines older than lineLimits.maxAge setting', function(done) {
     const customRules = {
       lineLimits: {
-        maxAgeMs: 100 // Lines older than 100ms should be removed
+        maxAge: 100 // Lines older than 100ms should be removed
       }
     };
     const hindsight = new Hindsight({ rules: customRules });
@@ -83,12 +83,12 @@ describe('Hindsight Rules Tests', function() {
       const line = hindsight.logTables.sequenceIndex.peek();
       const currentTime = Date.now();
 
-      // Validate that no log lines are older than the current time minus maxAgeMs
+      // Validate that no log lines are older than the current time minus maxAge
       expect(linesRemaining).to.equal(1);
       const msSinceSecondLine = currentTime - line.context.timestamp;
-      expect(msSinceSecondLine).to.be.below(customRules.lineLimits.maxAgeMs);
+      expect(msSinceSecondLine).to.be.below(customRules.lineLimits.maxAge);
 
       done();
-    }, 150); // Wait enough time to ensure the old line is older than maxAgeMs
+    }, 150); // Wait enough time to ensure the old line is older than maxAge
   });
 });

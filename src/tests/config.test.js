@@ -34,10 +34,10 @@ describe('Configuration Tests', function() {
       });
 
       it('should have valid lineLimits settings in rules', function() {
-        expect(config).to.have.nested.property('rules.lineLimits.maxCount')
+        expect(config).to.have.nested.property('rules.lineLimits.maxSize')
           .to.be.a('number').that.is.at.least(2)
           .and.is.at.most(MAX_LINE_COUNT_LIMIT);
-        expect(config).to.have.nested.property('rules.lineLimits.maxAgeMs')
+        expect(config).to.have.nested.property('rules.lineLimits.maxAge')
           .to.be.a('number').that.is.at.least(2)
           .and.is.at.most(MAX_AGE_MS_LIMIT);
       });
@@ -47,7 +47,7 @@ describe('Configuration Tests', function() {
         const customConfig = getConfig({ rules: { write: { level: 'warn' } } }, env);
         expect(customConfig.rules.write.level).to.equal('warn');
         // other values is still the default
-        expect(customConfig.rules.lineLimits.maxCount).to.equal(config.rules.lineLimits.maxCount);
+        expect(customConfig.rules.lineLimits.maxSize).to.equal(config.rules.lineLimits.maxSize);
       });
     });
   });

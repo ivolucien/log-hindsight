@@ -11,8 +11,8 @@ export const defaultConfig = {
   rules: {
     write: { level: 'info' },
     lineLimits: {
-      maxCount: 10 * 1000,
-      maxAgeMs: 70 * 1000,
+      maxSize: 10 * 1000,
+      maxAge: 70 * 1000,
     },
   },
   proxyOverride: null,
@@ -45,8 +45,8 @@ export const envConfigs = {
     rules: {
       write: { level: 'info' },
       lineLimits: {
-        maxCount: 10,
-        maxAgeMs: 100,
+        maxSize: 10,
+        maxAge: 100,
       }
     }
   },
@@ -60,8 +60,8 @@ export const envConfigs = {
     rules: {
       write: { level: 'info' },
       lineLimits: {
-        maxCount: 10,
-        maxAgeMs: 100,
+        maxSize: 10,
+        maxAge: 100,
       }
     }
   },
@@ -74,8 +74,8 @@ export const envConfigs = {
      rules: {
       write: { level: 'error' },
       lineLimits: {
-        maxCount: 1000 * 1000,
-        maxAgeMs: 130 * 1000, // 130 seconds for extended retention period
+        maxSize: 1000 * 1000,
+        maxAge: 130 * 1000, // 130 seconds for extended retention period
       },
     },
   },

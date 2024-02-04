@@ -87,14 +87,14 @@ class LogTableManager {
     LogTableManager._deleteLineFromTable(context);
   }
 
-  limitBymaxCount()  {} // automatic for ringbufferjs, triggers an optional eviction callback on overflow
+  limitBymaxSize()  {} // automatic for ringbufferjs, triggers an optional eviction callback on overflow
 
   /**
    * Removes log lines that are older than the specified maximum age.
    *
    * @param {number} maxLineAgeMs - The maximum age of log lines in milliseconds.
    */
-  limitBymaxAgeMs(maxLineAgeMs) {
+  limitBymaxAge(maxLineAgeMs) {
     const expiration = Date.now() - maxLineAgeMs;
 
     // todo? handle async to avoid caller code delay

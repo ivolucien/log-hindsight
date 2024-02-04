@@ -75,7 +75,7 @@ export default class Hindsight {
     this.module = logger;
     this.rules = rules;
     this.perLineFields = perLineFields;
-    this.logTables = new LogTableManager({ maxLineCount: this.rules.lineLimits.maxCount });
+    this.logTables = new LogTableManager({ maxLineCount: this.rules.lineLimits.maxSize });
     this.proxy = proxyOverride || LOGGER_PROXY_MAP[this.moduleName];
 
     const instanceSignature = Hindsight.getInstanceIndexString(perLineFields);
