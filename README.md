@@ -53,7 +53,7 @@ See [USE_CASES.md](USE_CASES.md) for more interesting use cases and implementati
 | `instanceLimits`  | Max count and age for log instances   | `{ maxSize: 5000, maxAge: 70000 }` |
 | `logger`          | Logger module used to write output    | `console`           |
 | `moduleLogLevel`  | Internal log-hindsight log level      | `'error'`           |
-| `rules`           | Rules for writing and buffer trimming | `{ write: { level: 'error' }, trim: { lineCountAbove: 10000, lineOlderThanMs: 70000 } }` |
+| `rules`           | Rules for writing and buffer limits | `{ write: { level: 'error' }, lineLimits: { maxCount: 10000, maxAgeMs: 70000 } }` |
 
 ## Manual Child Logger Creation
 

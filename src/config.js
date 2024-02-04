@@ -10,9 +10,9 @@ export const defaultConfig = {
   moduleLogLevel: process.env.HINDSIGHT_LOG_LEVEL || 'error', // log level of hindsight module itself
   rules: {
     write: { level: 'info' },
-    trim: {
-      lineCountAbove: 10 * 1000,
-      lineOlderThanMs: 70 * 1000,
+    lineLimits: {
+      maxCount: 10 * 1000,
+      maxAgeMs: 70 * 1000,
     },
   },
   proxyOverride: null,
@@ -27,7 +27,7 @@ export function getConfig(caller = {}, env = process.env.NODE_ENV) {
     moduleLogLevel: caller.moduleLogLevel || envConfig.moduleLogLevel,
     rules: {
       write: { ...envConfig.rules.write, ...caller?.rules?.write },
-      trim: { ...envConfig.rules.trim, ...caller?.rules?.trim }
+      lineLimits: { ...envConfig.rules.lineLimits, ...caller?.rules?.lineLimits }
     },
     proxyOverride: caller.proxyOverride,
   };
@@ -44,9 +44,9 @@ export const envConfigs = {
     moduleLogLevel: process.env.HINDSIGHT_LOG_LEVEL || 'debug',
     rules: {
       write: { level: 'info' },
-      trim: {
-        lineCountAbove: 10,
-        lineOlderThanMs: 100,
+      lineLimits: {
+        maxCount: 10,
+        maxAgeMs: 100,
       }
     }
   },
@@ -59,9 +59,9 @@ export const envConfigs = {
     moduleLogLevel: process.env.HINDSIGHT_LOG_LEVEL || 'trace',
     rules: {
       write: { level: 'info' },
-      trim: {
-        lineCountAbove: 10,
-        lineOlderThanMs: 100,
+      lineLimits: {
+        maxCount: 10,
+        maxAgeMs: 100,
       }
     }
   },
@@ -73,9 +73,9 @@ export const envConfigs = {
     },
      rules: {
       write: { level: 'error' },
-      trim: {
-        lineCountAbove: 1000 * 1000,
-        lineOlderThanMs: 130 * 1000, // 130 seconds for extended retention period
+      lineLimits: {
+        maxCount: 1000 * 1000,
+        maxAgeMs: 130 * 1000, // 130 seconds for extended retention period
       },
     },
   },

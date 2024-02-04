@@ -13,21 +13,25 @@ export const LOGGER_PROXY_MAP = {
 const DEFAULT_LOGGER = console;
 let instanceId = 0; // Base counter for formatted instanceID as 'id' + instanceId integer
 
+const LIMIT_RULE_PREFIX = 'limitBy'; // prefix for log table "limits" methods
+
 // todo: make singleton session handling optional, and add a way to remove instances
 let HindsightInstances;
 
 /**
- * Hindsight is a logger proxy that handles log lines and conditional output options.
- * It provides functionality to wrap loggers and track tables of log lines, including metadata.
- * Hindsight log tables are organized by log level names and sequence numbers.
- * It supports customization options for logging configuration and log level, and allows for
- * trimming or purging of log data to maintain specified data limits.
+ * Hindsight is a logger proxy that buffers log lines and supports conditional logging rules.
+ * It maintains tables of log lines for each log level, and keeps per-line metadata.
+ * Can be used to associate a child logger for each user session, task or endpoint call,
+ * configure output rules on a per logger basis and dynamically write log lines using custom logic.
  *
  * @class
- * @param {Object} [logger=console] - The logger object to be used for logging.
- * @param {Object} [rules={...}] - The rules used to configure conditional logging.
- * @param {Object} [proxyOverride=null] - The test proxy object to be used for testing purposes.
- */
+ * @constructor
+ * @param {Object} config - Hindsight configuration object, initialized instance tracking if needed.
+ * @param {Object} [config.logger=console] - The logger object to be used for logging.
+ * @param {Object} [config.rules] - Rule properties configuring logger instance and log line handling.
+ * @param {Object} [config.proxyOverride=null] - Custom proxy object, used internally for testing.
+ * @param {Object} perLineFields - The object properties to always log, stringified for singleton key.
+  */
 export default class Hindsight {
   // Internal log methods
   _trace; _dir; _debug; _info; _warn; _error;
@@ -71,7 +75,7 @@ export default class Hindsight {
     this.module = logger;
     this.rules = rules;
     this.perLineFields = perLineFields;
-    this.logTables = new LogTableManager({ maxLineCount: this.rules.trim.lineCountAbove });
+    this.logTables = new LogTableManager({ maxLineCount: this.rules.lineLimits.maxCount });
     this.proxy = proxyOverride || LOGGER_PROXY_MAP[this.moduleName];
 
     const instanceSignature = Hindsight.getInstanceIndexString(perLineFields);
@@ -85,49 +89,11 @@ export default class Hindsight {
   }
 
   /**
-   * Sets up internal (console) log methods for Hindsight code with '_' prefix.
-   * These methods are used for logging within the Hindsight class itself.
-   * @private
-   */
-  _setupModuleLogMethods() {
-    const levelName = process.env.HINDSIGHT_LOG_LEVEL || 'error';
-    this._moduleLogLevel = ConsoleProxy.levelIntHash[levelName];
-
-    // only using standard console methods for now
-    ['trace', 'debug', 'info', 'warn', 'error'].forEach((name) => {
-      this['_' + name] = (...payload) => {
-        // todo: use configured logger's methods instead of console
-        const lineLevel = ConsoleProxy.levelIntHash[name]; // using subset of console methods
-        if (lineLevel >= this._moduleLogLevel) {
-          console[name](...payload);
-        }
-      };
-    });
-  }
-
-  /**
    * Gets the instance ID, prefixed with 'id' to differentiate from sequence number.
    * @returns {string} The instance ID of the Hindsight object.
    */
   get instanceId() {
     return 'id' + this._instanceId;
-  }
-
-  /**
-   * Sets up proxy logging by initializing log tables and methods.
-   * This method configures the proxy to intercept and manage log calls.
-   * @private
-   */
-  _setupProxyLogging() {
-    this.logMethods = this.proxy.getLogMethods();
-
-    this.proxy.logTableNames.forEach((levelName) => {
-      // populate this proxy log method
-      this[levelName] = (...payload) => {
-        this._logIntake({ name: levelName, level: this.proxy.levelIntHash[levelName] }, payload);
-      }
-      this[levelName].writeCounter = 0; // initialize counter for this log method, for tests
-    });
   }
 
   /**
@@ -160,22 +126,22 @@ export default class Hindsight {
   }
 
   /**
-   * Trims the log tables based on the configured rules. The method iterates over
-   * each trimming criteria defined in the rules, calling the corresponding private
-   * trim method for each criteria with the currently configured trim rules.
+   * Limits the log tables based on the configured rules. The method iterates over
+   * each limit criteria defined in the rules, calling the corresponding private
+   * line limit method for each criteria with the currently configured limit rules.
    */
-  applyTrimRules() {
-    Object.keys(this.rules.trim).forEach((criteria) => {
+  applyLineLimits() {
+    Object.keys(this.rules.lineLimits).forEach((criteria) => {
       this._debug({ criteria });
-      const trimMethod = this.logTables['trimBy' + criteria];
-      // call the private trim method with the current trim rule value
-      trimMethod.call(this.logTables, this.rules.trim[criteria]);
+      const lineLimitMethod = this.logTables[LIMIT_RULE_PREFIX + criteria];
+      // call the private lineLimits method with the current lineLimits rule value
+      lineLimitMethod.call(this.logTables, this.rules.lineLimits[criteria]);
     });
   }
 
   /**
-   * Iterates over log level table not below levelCutoff and wries all lines.
-   * Call to write a session's history, as a child logger has all of one session's logging.
+   * Iterates over log level tables not below levelCutoff and wries all lines.
+   * Call this to write this session's history. (presumes you've stored session Id in perLineFields)
    *
    * @param {string} levelCutoff - minimum required log level to write.
    *
@@ -209,6 +175,44 @@ export default class Hindsight {
   }
 
   /**
+   * Sets up internal (console) log methods for Hindsight code with '_' prefix.
+   * These methods are used for logging within the Hindsight class itself.
+   * @private
+   */
+  _setupModuleLogMethods() {
+    const levelName = process.env.HINDSIGHT_LOG_LEVEL || 'error';
+    this._moduleLogLevel = ConsoleProxy.levelIntHash[levelName];
+
+    // only using standard console methods for now
+    ['trace', 'debug', 'info', 'warn', 'error'].forEach((name) => {
+      this['_' + name] = (...payload) => {
+        // todo: use configured logger's methods instead of console
+        const lineLevel = ConsoleProxy.levelIntHash[name]; // using subset of console methods
+        if (lineLevel >= this._moduleLogLevel) {
+          console[name](...payload);
+        }
+      };
+    });
+  }
+
+  /**
+   * Sets up proxy logging by initializing log tables and methods.
+   * This method configures the proxy to intercept and manage log calls.
+   * @private
+   */
+  _setupProxyLogging() {
+    this.logMethods = this.proxy.getLogMethods();
+
+    this.proxy.logTableNames.forEach((levelName) => {
+      // populate this proxy log method
+      this[levelName] = (...payload) => {
+        this._logIntake({ name: levelName, level: this.proxy.levelIntHash[levelName] }, payload);
+      }
+      this[levelName].writeCounter = 0; // initialize counter for this log method, for tests
+    });
+  }
+
+  /**
    * Logs the provided metadata and payload.
    *
    * @param {Object} metadata - The metadata object containing additional information for the log.
@@ -234,8 +238,8 @@ export default class Hindsight {
 
     if (action === 'write') {
       this._writeLine(name, context, payload);
-    } else if (action === 'defer') {
-      this._deferToTable(name, context, payload);
+    } else if (action === 'buffer') {
+      this._bufferLine(name, context, payload);
     }
   }
 
@@ -250,7 +254,7 @@ export default class Hindsight {
     const lineLevel = this.proxy.levelIntHash[context.level || name];
     this._debug({ threshold, lineLevel });
     if (lineLevel < threshold) {
-      return 'defer';
+      return 'buffer';
     } else {
       return 'write';
     }
@@ -272,7 +276,7 @@ export default class Hindsight {
     }
   }
 
-  _deferToTable(name, context, payload) {
+  _bufferLine(name, context, payload) {
     // get corresponding log table
     const logEntry = {
       context: { name, ...context },
@@ -282,7 +286,7 @@ export default class Hindsight {
   }
 }
 
-// todo: add trim / purge function to keep to specified data limits (cullLogLines?)
+// todo: add lineLimits / purge function to keep to specified data limits (cullLogLines?)
 // todo: add method to use rules to sanitize, keep or write log lines (logDirector?)
 
 /*
@@ -303,7 +307,11 @@ LogTableManager: {
         ...<any>
       ]
     }
-  }
+  },
+  warn: {
+    ...
+  },
+  ...
 }
 */
 

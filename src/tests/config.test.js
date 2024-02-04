@@ -33,11 +33,11 @@ describe('Configuration Tests', function() {
         expect(config.rules.write.level).to.be.oneOf(EXPECTED_LOG_LEVELS);
       });
 
-      it('should have valid trim settings in rules', function() {
-        expect(config).to.have.nested.property('rules.trim.lineCountAbove')
+      it('should have valid lineLimits settings in rules', function() {
+        expect(config).to.have.nested.property('rules.lineLimits.maxCount')
           .to.be.a('number').that.is.at.least(2)
           .and.is.at.most(MAX_LINE_COUNT_LIMIT);
-        expect(config).to.have.nested.property('rules.trim.lineOlderThanMs')
+        expect(config).to.have.nested.property('rules.lineLimits.maxAgeMs')
           .to.be.a('number').that.is.at.least(2)
           .and.is.at.most(MAX_AGE_MS_LIMIT);
       });
@@ -47,7 +47,7 @@ describe('Configuration Tests', function() {
         const customConfig = getConfig({ rules: { write: { level: 'warn' } } }, env);
         expect(customConfig.rules.write.level).to.equal('warn');
         // other values is still the default
-        expect(customConfig.rules.trim.lineCountAbove).to.equal(config.rules.trim.lineCountAbove);
+        expect(customConfig.rules.lineLimits.maxCount).to.equal(config.rules.lineLimits.maxCount);
       });
     });
   });

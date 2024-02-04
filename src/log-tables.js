@@ -6,6 +6,11 @@ let sequenceIndex;
 class LogTableManager {
   maxLineAgeMs;
 
+  /**
+   * Constructs a LogTableManager object, initializing the global sequence index if required.
+   * @param {Object} options - The options for the LogTables object.
+   * @param {number} options.maxLineCount - The maximum combined total line count.
+   */
   constructor({ maxLineCount }) {
     this.logTables = {};
     if (sequenceIndex == null) {
@@ -13,6 +18,13 @@ class LogTableManager {
     }
   }
 
+  /**
+   * Initializes the global index for log tables.
+   * This function is also useful for clearing the static index during tests.
+   *
+   * @param {number} maxLineCount - The maximum combined total of all log lines.
+   * @returns {void}
+   */
   static initGlobalIndex(maxLineCount) {
     sequenceIndex = new RingBuffer( // init singleton on first constructor call
       maxLineCount, // max total of all log lines
@@ -20,6 +32,7 @@ class LogTableManager {
     );
   }
 
+  // remove log line from the table referenced in the line's context object
   static _deleteLineFromTable(context) {
     const levelTable = context.table;
     delete levelTable[context.sequence];
@@ -29,6 +42,12 @@ class LogTableManager {
     return sequenceIndex; // undefined if not initialized by constructor
   }
 
+  /**
+   * Retrieves the log table for the specified level name. If the table does not exist, it will be created.
+   *
+   * @param {string} levelName - The name of the log level.
+   * @returns {object} - The log table object for the specified level name.
+   */
   get(levelName) {
     if (!this.logTables[levelName]) {
       this.logTables[levelName] = { counter: 1 };
@@ -36,9 +55,15 @@ class LogTableManager {
     return this.logTables[levelName];
   }
 
+  /**
+   * Adds a line to the specified level's table and the sequence index.
+   * @param {string} levelName - The name of the level.
+   * @param {any} line - The line to be added.
+   * @returns {number} - The sequence number of the added line.
+   */
   addLine(levelName, line) {
     const table = this.get(levelName);
-    line.context.table = table; // Add table and sequence to context as a back-reference when trimming
+    line.context.table = table; // Add table and sequence to context as a back-reference when deleting lines
     line.context.sequence = table.counter++;;
     table[line.context.sequence] = line;
 
@@ -47,6 +72,10 @@ class LogTableManager {
     return line.context.sequence;
   }
 
+  /**
+   * Soft delete the referenced line, idempotently.
+   * @param {Object} context - The line's context object containing the sequence key.
+   */
   deleteLine(context) {
     const line = sequenceIndex[context.sequence];
     if (!line) {
@@ -58,15 +87,17 @@ class LogTableManager {
     LogTableManager._deleteLineFromTable(context);
   }
 
-  trimBylineCountAbove() {
-    // no-op for the ringbufferjs as it maintains max size and triggers the eviction callback when full
-    // todo? implement a manual buffer length override for the sequence index / truncate current contents
-  }
+  limitBymaxCount()  {} // automatic for ringbufferjs, triggers an optional eviction callback on overflow
 
-  // call this via setTimeout to avoid caller code delay
-  trimBylineOlderThanMs(maxLineAgeMs) {
+  /**
+   * Removes log lines that are older than the specified maximum age.
+   *
+   * @param {number} maxLineAgeMs - The maximum age of log lines in milliseconds.
+   */
+  limitBymaxAgeMs(maxLineAgeMs) {
     const expiration = Date.now() - maxLineAgeMs;
 
+    // todo? handle async to avoid caller code delay
     while (!sequenceIndex.isEmpty() && sequenceIndex.peek()?.context?.timestamp < expiration) {
       // remove sequence index reference
       const line = sequenceIndex.deq();
@@ -76,7 +107,11 @@ class LogTableManager {
     }
   }
 
-  trimByAlreadyWritten() {
+  /**
+   * Removes previously written lines from the end of the log table, up to the last unwritten line.
+   * Lines are removed from both the sequence index and the log table.
+   */
+  limitByAlreadyWritten() {
     while (!sequenceIndex.isEmpty() && sequenceIndex.peek()?.context?.written) {
       sequenceIndex.deq();
       // and from the log table

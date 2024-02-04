@@ -2,31 +2,31 @@ import { expect } from 'chai';
 import Hindsight from '../index.js';
 import LogTableManager from '../log-tables.js';
 
-describe('Hindsight applyTrimRules Tests', function() {
+describe('Hindsight applyLineLimits.Rules Tests', function() {
   let hindsight;
 
   beforeEach(function() {
-    // Setup Hindsight with custom trim rules for testing
+    // Setup Hindsight with custom limit rules for testing
     const customRules = {
-      trim: {
-        lineCountAbove: 5,
-        lineOlderThanMs: 50 // 50 milliseconds
+      lineLimits: {
+        maxCount: 5,
+        maxAgeMs: 50 // 50 milliseconds
       }
     };
-    LogTableManager.initGlobalIndex(customRules.trim.lineCountAbove); // reset static line index
+    LogTableManager.initGlobalIndex(customRules.lineLimits.maxCount); // reset static line index
     hindsight = new Hindsight({ rules: customRules });
     hindsight.logTables.sequenceIndex.deqN(hindsight.logTables.sequenceIndex.size()); // Clear line index
   });
 
-  it('should trim log lines above the specified count', function() {
+  it('should limit log lines above the specified count', function() {
     // Add log lines that fall below the immediate write level and exceed the max line count
     for (let i = 0; i < 7; i++) {
       hindsight._logIntake({ name: 'debug', sessionId: 'test', timestamp: Date.now() }, `Log line ${i}`);
     }
 
-    // Check if the number of log lines are trimmed to 5
+    // Check if the number of log lines are limited to 5
     const logTable = hindsight.logTables.get('debug');
-    const expectedLogTableKeys = hindsight.rules.trim.lineCountAbove + 1; // +1 for the counter key
+    const expectedLogTableKeys = hindsight.rules.lineLimits.maxCount + 1; // +1 for the counter key
     hindsight._debug({ logTable, tableKeys: Object.keys(logTable) });
     expect(Object.keys(logTable).length).to.be.at.most(expectedLogTableKeys);
   });
@@ -38,9 +38,9 @@ describe('Hindsight applyTrimRules Tests', function() {
     // Add a recent log line
     hindsight._logIntake({ name: 'debug', sessionId: 'test', timestamp: Date.now() }, 'New log line');
 
-    // Wait for 10ms and then apply trim rules
+    // Wait for 10ms and then apply lineLimits rules
     setTimeout(() => {
-      hindsight.applyTrimRules();
+      hindsight.applyLineLimits();
       const logTable = hindsight.logTables.get('debug', 'test');
 
       // Check if the old log line is removed
