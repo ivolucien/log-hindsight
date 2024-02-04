@@ -50,10 +50,11 @@ class LogTableManager {
   deleteLine(context) {
     const line = sequenceIndex[context.sequence];
     if (!line) {
-      // must soft delete from sequence index as it only supports deletion from the tail
-      line.payload = [];
-      line.context.written = true;
+      return;
     }
+      // must soft delete from sequence index as it only supports deletion from the tail
+    line.payload = [];
+    line.context.expired = true;
     LogTableManager._deleteLineFromTable(context);
   }
 

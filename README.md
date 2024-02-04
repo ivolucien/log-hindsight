@@ -1,12 +1,21 @@
 # log-hindsight
-_logging features you didn't know you wanted_
-
-log-hindsight adds retroactive and conditional logic to standard logging, allowing for history dumps when desired, like after an error, and custom conditional log sampling.
+log-hindsight adds retroactive and conditional logic to standard loggers, allowing you to retroactively trigger what would have been logged at more detailed log level, such as after an error, or to perform custom data filtering, log sampling or to turn on detailed logging for specific users or endpoints.
 
 By the first release log-hindsight will support multiple logging modules, but at this early stage of development it only supports the console logger.
 
+## Features
+_Most of this is already working but none of it has been vetted for production use, yet._
+- **Retroactive Log History Dump**: Automatically output previously buffered log entries when specific conditions are met, such as an error occurring.
+- **Session-specific Logging**: Easily create and manage log contexts for individual user sessions or operational tasks.
+- **Configurable Log Retention**: Customize how long historical logs are retained in the buffer before being discarded, based on count or age.
+- **Integration with Standard Logging Libraries**: Designed to wrap around standard logging modules, starting with support for the console logger.
+
+## Planned Features
+- **Conditional Log Sampling**: Define complex conditions under which logs should be captured or ignored, optimizing log volume and relevance.
+- **Dynamic Log Level Adjustment**: Change log level on the fly based on runtime conditions or external triggers.
+
 ## Installation
-_Module is not ready for alpha release yet. It's in early development and not yet published to npm._
+Note: log-hindsight is currently in development and not yet ready for public release. Installation instructions will be provided once the module is published to npm.
 
 ## Quickstart
 _This is a quickstart guide for the current state of development. It will be updated as the module matures._
@@ -28,9 +37,14 @@ if (errorCondition) {
 }
 ```
 
-## Overview and Use Cases
+## Example Use Cases
+_log-hindsight allows you to log much less normally but log more details when it's valuable._
+- When an error occurs write historical log details to support investigation.
+- Keep log retention costs low, but log details for a specific user.
+- Log detailed information for a newly released endpoint.
+- Just write error log lines normally, but for every 100th user request, write at trace level.
 
-
+See [USE_CASES.md](USE_CASES.md) for more interesting use cases and implementation ideas.
 
 ## Configuration Options
 
@@ -43,12 +57,11 @@ if (errorCondition) {
 
 ## Manual Child Logger Creation
 
-To create a child logger dedicated to a specific API session or task:
+To create a child logger dedicated to a specific API session or task, when you can pass the logger along:
 
 ```javascript
 const childLogger = logger.child({ perLineFields: { sessionId: 'unique-session-id' } });
 
-// Then just use childLogger for a specific session if you can pass it around as needed
 childLogger.info('Session-specific log message');
 ```
 
@@ -59,6 +72,7 @@ If you wish to reuse a single logger instance for across separate calls of a tas
 // child logger created for the first log call for this session
 const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' });
 
+<later...>
 // a separate API call of the that same session, gets the same child logger (if within the same process)
 const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' });
 ```
@@ -67,8 +81,8 @@ const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' }
 
 ### Planned for v0.1.0
 - Wrapper support for console logger
-- Support logger singletons for the local process, by category or unique ID
-- Manage logger singleton quantity and lifespan
+- Support logger singletons for the local process, unique per a set of static values, like a session ID
+- Manage logger singleton quantity and lifespan, using an LRU cache with a max instance count and age
 - Buffer log lines that fall below the current log level, limited by max count and age
 - Write historical lines from a logger based on a dynamically specified log level
 
@@ -91,6 +105,6 @@ hold
 
 ## Contributors
 
-We are in the early stages of development and welcome collaboration. If you're interested in contributing to log-hindsight, please contact me to coordinate on features. At this stage, it's too early in development for submitting PRs without coordination.
+This project is in the early stages of development and the author welcomes your input. If you're interested in contributing to log-hindsight, please contact me to coordinate on features. At this stage, it's too early in development for submitting PRs without coordination as the interface isn't stable yet.
 
 
