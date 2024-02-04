@@ -1,6 +1,6 @@
 {
   "name": "@ivolucien/log-hindsight",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "logging features you didn't know you wanted - time travel and transformation",
   "main": "src/index.js",
   "files": "src/**/*",

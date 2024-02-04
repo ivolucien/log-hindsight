@@ -8,9 +8,9 @@ _Most of this is already working but none of it has been vetted for production u
 - **Retroactive Log History Dump**: Automatically output previously buffered log entries when specific conditions are met, such as an error occurring.
 - **Session-specific Logging**: Easily create and manage log contexts for individual user sessions or operational tasks.
 - **Configurable Log Retention**: Customize how long historical logs are retained in the buffer before being discarded, based on count or age.
-- **Integration with Standard Logging Libraries**: Designed to wrap around standard logging modules, starting with support for the console logger.
 
 ## Planned Features
+- **Integration with Standard Logging Libraries**: Designed to wrap around popular logging modules, currently only supports the console logger.
 - **Conditional Log Sampling**: Define complex conditions under which logs should be captured or ignored, optimizing log volume and relevance.
 - **Dynamic Log Level Adjustment**: Change log level on the fly based on runtime conditions or external triggers.
 
@@ -53,7 +53,7 @@ See [USE_CASES.md](USE_CASES.md) for more interesting use cases and implementati
 | `instanceLimits`  | Max count and age for log instances   | `{ maxSize: 5000, maxAge: 70000 }` |
 | `logger`          | Logger module used to write output    | `console`           |
 | `moduleLogLevel`  | Internal log-hindsight log level      | `'error'`           |
-| `rules`           | Rules for writing and buffer limits | `{ write: { level: 'error' }, lineLimits: { maxCount: 10000, maxAgeMs: 70000 } }` |
+| `rules`           | Rules for writing and buffer limits | `{ write: { level: 'error' }, lineLimits: { maxSize: 10000, maxAge: 70000 } }` |
 
 ## Manual Child Logger Creation
 
@@ -77,14 +77,16 @@ const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' }
 const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' });
 ```
 
-## Roadmap
+## Change Log
 
-### Planned for v0.1.0
+### v0.1.0 Unstable development version with roughed out functionality - 2024-02-04
 - Wrapper support for console logger
 - Support logger singletons for the local process, unique per a set of static values, like a session ID
 - Manage logger singleton quantity and lifespan, using an LRU cache with a max instance count and age
 - Buffer log lines that fall below the current log level, limited by max count and age
 - Write historical lines from a logger based on a dynamically specified log level
+
+## Roadmap
 
 ### Planned for v0.2.0
 - Support for the common denominator of common logger modules
