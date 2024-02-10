@@ -1,5 +1,4 @@
 // config.js
-import ConsoleProxy from "./console-proxy.js";
 
 export const defaultConfig = {
   instanceLimits: {
@@ -15,7 +14,6 @@ export const defaultConfig = {
       maxAge: 70 * 1000,
     },
   },
-  proxyOverride: null,
 };
 
 // spell out supported properties, the || syntax prevents falsy caller override values
@@ -29,7 +27,6 @@ export function getConfig(caller = {}, env = process.env.NODE_ENV) {
       write: { ...envConfig.rules.write, ...caller?.rules?.write },
       lineLimits: { ...envConfig.rules.lineLimits, ...caller?.rules?.lineLimits }
     },
-    proxyOverride: caller.proxyOverride,
   };
   return config;
 };

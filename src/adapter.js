@@ -1,6 +1,6 @@
 // generic adapter for supported logger functionality
 
-const LOG_LEVELS = {
+export const LOG_LEVELS = {
   silly: 0,
   verbose: 10,
   trace: 10,
@@ -15,16 +15,18 @@ const LOG_LEVELS = {
 const LEVEL_NAMES = Object.keys(LOG_LEVELS);
 
 // if the module doesn't support a log level use the closest equivalent
-const LEVEL_FALLBACK = {
+export const LEVEL_FALLBACK = {
   silly: [ 'trace', 'dir', 'debug' ],
   verbose: [ 'trace', 'dir', 'debug' ],
   trace: [ 'trace', 'verbose', 'debug' ],
+  dir: [ 'dir', 'trace', 'debug'],
   log: [ 'log', 'debug' ],
   fatal: [ 'error'],
 };
 
 class LogAdapter {
   static get LOG_LEVELS() { return { ...LOG_LEVELS }; }
+  static get LEVEL_FALLBACK() { return { ...LEVEL_FALLBACK }; }
 
   /**
    * Initializes all common log methods on the LogAdapter class prototype.
@@ -44,14 +46,14 @@ class LogAdapter {
     LEVEL_NAMES.forEach((name) => {
       const fallback = LEVEL_FALLBACK[name] || [];
       // find a method that exists on the module, by preferred name or a fallback name
-      const moduleMethod = module[name] ? name : fallback.find((name) => module[name]);
+      const logMethod = module[name] ? name : fallback.find((name) => module[name]);
 
-      if (module[moduleMethod] === undefined) {
+      if (module[logMethod] === undefined) {
         throw new Error(`The logger module doesn't support log level "${name}", and has no known substitute.`);
       }
-      console.log({ name, moduleMethod, fallback, type: typeof module[moduleMethod]});
+      console.log({ name, moduleMethod: logMethod, fallback, type: typeof module[logMethod]});
       LogAdapter.prototype[name] = function(...args) {
-        return this.module[moduleMethod](...args); // will refer to the module passed to the constructor
+        return this.module[logMethod](...args); // will refer to the module passed to the constructor
       };
       console.log(LogAdapter.prototype[name]);
     });
