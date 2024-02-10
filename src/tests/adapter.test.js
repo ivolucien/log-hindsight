@@ -22,16 +22,24 @@ describe('LogAdapter', () => {
       LogAdapter.initLogMethods(validModule);
       const logAdapter = new LogAdapter(validModule);
 
-      expect(logAdapter.silly).to.be.a('function');
-      expect(logAdapter.verbose).to.be.a('function');
-      expect(logAdapter.trace).to.be.a('function');
-      expect(logAdapter.dir).to.be.a('function');
-      expect(logAdapter.debug).to.be.a('function');
-      expect(logAdapter.log).to.be.a('function');
-      expect(logAdapter.info).to.be.a('function');
-      expect(logAdapter.warn).to.be.a('function');
-      expect(logAdapter.error).to.be.a('function');
-      expect(logAdapter.fatal).to.be.a('function');
+      const logMethods = logAdapter.getLogMethods();
+
+      logMethods.forEach(({ name, level }) => {
+        expect(logAdapter[name]).to.be.a('function');
+      });
+    });
+
+    it('should initialize the name array and lookup hash for all log levels', () => {
+      LogAdapter.initLogMethods(validModule);
+      const logAdapter = new LogAdapter(validModule);
+
+      const logMethods = logAdapter.getLogMethods();
+
+      logMethods.forEach(({ name, level }) => {
+        expect(logAdapter.levelNames).to.include(name);
+        expect(logAdapter.levelLookup[name]).to.equal(level);
+        expect(logAdapter.levelLookup[level]).to.equal(level);
+      });
     });
 
     it('should call the corresponding methods on the provided module', () => {

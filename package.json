@@ -6,8 +6,8 @@
   "files": "src/**/*",
   "type": "module",
   "scripts": {
-    "test": "NODE_ENV=test mocha 'src/tests/**/*.test.js'",
-    "test-dev": "NODE_ENV=development mocha 'src/tests/**/*.test.js'"
+    "test": "NODE_ENV=test mocha 'src/tests/**/*.test.js' 'src/tests/**/*.integration.js'",
+    "test-dev": "NODE_ENV=development mocha 'src/tests/**/*.test.js' 'src/tests/**/*.integration.js'"
   },
   "repository": {
     "type": "git",
@@ -26,9 +26,12 @@
   },
   "homepage": "https://github.com/ivolucien/log-hindsight#readme",
   "devDependencies": {
+    "bunyan": "^1.8.15",
     "chai": "^4.3.7",
     "chai-spies": "^1.1.0",
-    "mocha": "^10.2.0"
+    "mocha": "^10.2.0",
+    "pino": "^8.18.0",
+    "winston": "^3.11.0"
   },
   "dependencies": {
     "quick-lru": "^7.0.0",

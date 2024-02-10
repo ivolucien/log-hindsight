@@ -1,14 +1,24 @@
 import { expect } from 'chai';
-import { getConfig, envConfigs } from '../config.js';
+import { getConfig, defaultConfig, envConfigs } from '../config.js';
+import Hindsight from '../index.js';
+
+const MAX_LINE_COUNT_LIMIT = 1000 * 1000 * 1000; // 1 billion
+const MAX_AGE_MS_LIMIT = 1000 * 60 * 60 * 24 * 30; // 30 days
 
 // Define required limits and requirements for *default* env config values
 const EXPECTED_LOG_LEVELS = ['trace', 'debug', 'info', 'warn', 'error'];
-const MAX_LINE_COUNT_LIMIT = 1000 * 1000 * 1000;
-const MAX_AGE_MS_LIMIT = 200000;
 
-describe('Configuration Tests', function() {
-  Object.keys(envConfigs).forEach(env => {
-    describe(`Environment: ${env}`, function() {
+describe('Environment configuration validation tests', function() {
+  const environments = ['test', 'development', 'stress', 'production'];
+  let config;
+  let env;
+
+  before(() => {
+    config = getConfig({}, env);
+  });
+
+  environments.forEach((env) => {
+    describe(`${env} environment`, function() {
       let config;
 
       before(() => {
@@ -16,7 +26,7 @@ describe('Configuration Tests', function() {
       });
 
       it('should have all required fields', function() {
-        expect(config).to.have.all.keys('instanceLimits', 'logger', 'moduleLogLevel', 'rules', 'proxyOverride');
+        expect(config).to.have.all.keys('instanceLimits', 'logger', 'moduleLogLevel', 'rules');
       });
 
       it('should have a valid logger', function() {
@@ -40,6 +50,28 @@ describe('Configuration Tests', function() {
         expect(config).to.have.nested.property('rules.lineLimits.maxAge')
           .to.be.a('number').that.is.at.least(2)
           .and.is.at.most(MAX_AGE_MS_LIMIT);
+      });
+
+      it('should override default values with manually specified config values', function() {
+        const customConfig = {
+          instanceLimits: { maxSize: 100, maxAge: 200 },
+          rules: { lineLimits: { maxSize: 300, maxAge: 400 } },
+        };
+        const overriddenConfig = getConfig(customConfig, env);
+
+        expect(overriddenConfig.instanceLimits.maxSize).to.equal(customConfig.instanceLimits.maxSize);
+        expect(overriddenConfig.instanceLimits.maxAge).to.equal(customConfig.instanceLimits.maxAge);
+        expect(overriddenConfig.rules.lineLimits.maxSize).to.equal(customConfig.rules.lineLimits.maxSize);
+        expect(overriddenConfig.rules.lineLimits.maxAge).to.equal(customConfig.rules.lineLimits.maxAge);
+      });
+
+      it('should not throw errors when creating new Hindsight objects with various config values', function() {
+        const customConfig = {
+          instanceLimits: { maxSize: 100, maxAge: 200 },
+          rules: { lineLimits: { maxSize: 300, maxAge: 400 } },
+        };
+
+        expect(() => new Hindsight(customConfig)).to.not.throw();
       });
 
       // Test with partial custom values

@@ -9,16 +9,15 @@ describe('Hindsight child tests', function() {
     newLogger = originalHindsight.child({ perLineFields: { key: 'value' }});
   });
 
-  it('should create a new logger with default options as a proxied console', function() {
-    expect(originalHindsight.moduleName).to.equal('console');
-    expect(newLogger.moduleName).to.equal('console');
+  it('should default to console logger for both parent and child', function() {
+    expect(originalHindsight.module).to.equal(console);
+    expect(newLogger.module).to.equal(console);
   });
 
   it('should create a new logger with properties matching the original', function() {
     expect(newLogger.module).to.equal(console);
-    expect(newLogger.proxy).to.equal(originalHindsight.proxy);
     expect(newLogger.logMethods).to.deep.equal(originalHindsight.logMethods);
-    newLogger.proxy.logTableNames.forEach((name) => {
+    newLogger.adapter.levelNames.forEach((name) => {
       expect(newLogger.logTables.get(name)).to.deep.equal({ counter: 1 });
     });
   });

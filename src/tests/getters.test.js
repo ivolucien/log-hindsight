@@ -23,7 +23,7 @@ describe('Hindsight getter tests', function() {
       const hindsight = new Hindsight();
       const firstId = hindsight._instanceId;
       hindsight._debug(hindsight.logTables);
-      hindsight.proxy.logTableNames.forEach((name) => {
+      hindsight.adapter.levelNames.forEach((name) => {
         expect(hindsight.logTables.get(name)).to.deep.eql({ counter: 1 });
       });
 
