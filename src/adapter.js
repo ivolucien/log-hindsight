@@ -14,6 +14,18 @@ export const LOG_LEVELS = {
 };
 const LEVEL_NAMES = Object.keys(LOG_LEVELS);
 
+    // supports level lookup without caring if we're passed a level name or integer
+export const LEVEL_LOOKUP = LEVEL_NAMES.reduce(
+  (lookup, name) => {
+    const level = LOG_LEVELS[name];
+    lookup[name] = level;
+    lookup[level] = level;
+    return lookup;
+  },
+  {}
+);
+
+
 // if the module doesn't support a log level use the closest equivalent
 export const LEVEL_FALLBACK = {
   silly: [ 'trace', 'dir', 'debug' ],
@@ -25,68 +37,41 @@ export const LEVEL_FALLBACK = {
 };
 
 class LogAdapter {
-  static get LOG_LEVELS() { return { ...LOG_LEVELS }; }
-  static get LEVEL_FALLBACK() { return { ...LEVEL_FALLBACK }; }
+  logger;
 
-  /**
-   * Initializes all common log methods on the LogAdapter class prototype.
-   *
-   * @param {Object} module - The module object with methods to call from LogAdapter.
-   * @param {boolean} [forceTestInit=false] - Whether to force initialize an already initialized LogAdapter.
-   * @returns {void}
-   */
-  static initLogMethods(module, forceTestInit = false) {
-    if (typeof module !== 'object' || module.info === undefined) {
-      throw new Error('LogAdapter class initialization requires a module with common logging methods.');
-    }
-    if (!forceTestInit && typeof LogAdapter.prototype.info === 'function') {
-      return; // done if already initialized
-    }
-
-    LEVEL_NAMES.forEach((name) => {
-      const fallback = LEVEL_FALLBACK[name] || [];
-      // find a method that exists on the module, by preferred name or a fallback name
-      const logMethod = module[name] ? name : fallback.find((name) => module[name]);
-
-      if (module[logMethod] === undefined) {
-        throw new Error(`The logger module doesn't support log level "${name}", and has no known substitute.`);
+  constructor(logger) {
+    this.logger = logger;
+    return new Proxy(this, {
+      get: (target, prop, receiver) => {
+        if (typeof target.logger[prop] === 'function') {
+          // Direct method exists on module, bind it to ensure correct `this` context
+          return target.logger[prop].bind(target.logger);
+        } else if (LEVEL_FALLBACK[prop]) {
+          // Attempt to resolve a fallback method
+          const fallbackMethod = LEVEL_FALLBACK[prop].find(fallback => typeof target.logger[fallback] === 'function');
+          if (fallbackMethod) {
+            // Ensure the fallback method is also correctly bound
+            return target.logger[fallbackMethod].bind(target.logger);
+          }
+        }
+        // Method is not a logger method, attempt to call it on LogAdapter instance
+        if (typeof target[prop] === 'function') {
+          // Ensure methods on the LogAdapter itself are correctly bound to the LogAdapter instance
+          return target[prop].bind(target);
+        }
+        else if (prop in target) {
+          return target[prop];
+        }
+        // Method not supported, return undefined or throw error
+        return undefined; // or throw new Error(`Method ${prop} not supported.`);
       }
-      console.log({ name, moduleMethod: logMethod, fallback, type: typeof module[logMethod]});
-      LogAdapter.prototype[name] = function(...args) {
-        return this.module[logMethod](...args); // will refer to the module passed to the constructor
-      };
-      console.log(LogAdapter.prototype[name]);
     });
   }
 
-  // class methods dynamically assigned for supported log levels in initLogMethods()
-  // silly; verbose; trace; dir; debug; log; info; warn; error; fatal;
-
-  module;
-  levelNames;
-
-  /**
-   * Creates an instance of LogAdapter.
-   *
-   * @param {Object} module - The module object with methods to call from LogAdapter.
-   * @param {Object} [logLevels=LOG_LEVELS] - The log levels to be used by the LogAdapter.
-   */
-  constructor(module) {
-    this.module = module;
-    this.levelNames =  Object.keys(LOG_LEVELS);
-    LogAdapter.initLogMethods(this.module);
-
-    // supports level lookup without caring if we're passed a level name or integer
-    this.levelLookup = this.levelNames.reduce(
-      (levels, name) => {
-        const level = LOG_LEVELS[name];
-        levels[name] = level;
-        levels[level] = level;
-        return levels;
-      },
-      {}
-    );
-  }
+  get logLevels() { return { ...LOG_LEVELS }; }
+  get levelLookup() { return { ...LEVEL_LOOKUP }; }
+  get levelFallback() { return { ...LEVEL_FALLBACK }; }
+  get levelNames() { return LEVEL_NAMES; } /**
 
   /**
    * Creates a child logger instance - WIP, not yet implemented for console.
@@ -95,19 +80,18 @@ class LogAdapter {
    * @returns {Object} - The child logger instance.
    */
   child(...args) {
-    if (this.module.child) {
-      return this.module.child(...args);
+    if (this.logger.child) {
+      return this.logger.child(...args);
     }
     // no-op otherwise
     // todo: implement "child" functionality for console
   }
 
-  /**
-   * Retrieves the log methods and their corresponding log levels.
+  /* Retrieves the log methods and their corresponding log levels.
    *
    * @returns {Array<Object>} - An array of log methods and their log levels.
    */
-  getLogMethods() {
+  get logMethods() {
     return this.levelNames.map(name => ({ name, level: this.levelLookup[name] }));
   }
 }

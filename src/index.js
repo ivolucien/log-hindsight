@@ -191,7 +191,7 @@ export default class Hindsight {
    * @private
    */
   _initWrapper() {
-    this.logMethods = this.adapter.getLogMethods();
+    this.logMethods = this.adapter.logMethods;
 
     this.adapter.levelNames.forEach((levelName) => {
       // populate this wrapper log method
