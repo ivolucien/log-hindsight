@@ -45,7 +45,6 @@ describe('LogAdapter Integration Tests', () => {
 
       Object.keys(LOG_LEVELS).forEach(level => {
         it(`should log a message for ${level}`, () => {
-          console.dir(adapter);
           adapter[level]('Test message');
 
           // Verify that a message was captured
@@ -73,6 +72,10 @@ function captureStdStreams(stream) {
     };
 }
 
+function hasSubString(array, subString) {
+    return array.some((string) => string.includes(subString));
+}
+
 describe('LogAdapter integration test with console logger', () => {
     let stdoutCapture, stderrCapture;
 
@@ -83,9 +86,9 @@ describe('LogAdapter integration test with console logger', () => {
     });
 
     afterEach(() => {
-        // Stop capturing and clean up
-        stdoutCapture.restore();
-        stderrCapture.restore();
+      // Stop capturing and clean up
+      stdoutCapture?.restore();
+      stderrCapture?.restore();
     });
 
     it('should correctly delegate to expected log methods', () => {
@@ -99,13 +102,18 @@ describe('LogAdapter integration test with console logger', () => {
         adapter.warn('Called console.warn');
         adapter.error('Called console.error');
 
-        // Verify that messages were captured
-        expect(stdoutCapture.output).to.include('Called console.dir');
-        expect(stdoutCapture.output).to.include('Called console.debug');
-        expect(stdoutCapture.output).to.include('Called console.log');
-        expect(stdoutCapture.output).to.include('Called console.info');
-        expect(stderrCapture.output).to.include('Called console.error');
-        expect(stdoutCapture.output).to.include('Called console.warn');
+        stdoutCapture.restore();
+        stderrCapture.restore();
+
+        // dir, debug, log and info should be written to stdout
+        expect(hasSubString(stdoutCapture.output, 'Called console.dir')).to.be.true;
+        expect(hasSubString(stdoutCapture.output, 'Called console.debug')).to.be.true;
+        expect(hasSubString(stdoutCapture.output, 'Called console.log')).to.be.true;
+        expect(hasSubString(stdoutCapture.output, 'Called console.info')).to.be.true;
+
+        // warn and error should be written to stderr
+        expect(hasSubString(stderrCapture.output, 'Called console.warn')).to.be.true;
+        expect(hasSubString(stderrCapture.output, 'Called console.error')).to.be.true;
     });
 
     it('should correctly delegate to expected fallback methods', () => {
@@ -116,10 +124,14 @@ describe('LogAdapter integration test with console logger', () => {
       adapter.verbose('Called console.verbose');
       adapter.fatal('Called console.fatal');
 
-      // Verify that messages were captured
-      expect(stdoutCapture.output).to.include('Called console.silly');
-      expect(stdoutCapture.output).to.include('Called console.verbose');
-      expect(stdoutCapture.output).to.include('Called console.fatal');
+      stdoutCapture.restore();
+      stderrCapture.restore();
+
+      // messages were written as expected
+      expect(hasSubString(stdoutCapture.output, 'Called console.silly')).to.be.true;
+      expect(hasSubString(stdoutCapture.output, 'Called console.verbose')).to.be.true;
+
+      expect(hasSubString(stderrCapture.output, 'Called console.fatal')).to.be.true;
   });
 
   // Additional tests for other console methods and scenarios can be added here
