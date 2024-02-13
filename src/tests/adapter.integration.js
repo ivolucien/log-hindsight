@@ -27,12 +27,12 @@ describe('LogAdapter Integration Tests', () => {
   // Define loggers with redirected output
   const captureStream = createCaptureStream();
   const loggers = {
-//    bunyan: bunyan.createLogger({ name: 'test', stream: captureStream, level: 'trace' }),
+    bunyan: bunyan.createLogger({ name: 'test', stream: captureStream, level: 'trace' }),
     winston: winston.createLogger({
       transports: [new winston.transports.Stream({ stream: captureStream })],
       level: 'silly'
     }),
-//    pino: pino({ level: 'trace' }, captureStream)
+    pino: pino({ level: 'trace' }, captureStream)
   };
 
   Object.entries(loggers).forEach(([loggerName, logger]) => {
