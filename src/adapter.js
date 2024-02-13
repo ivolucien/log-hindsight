@@ -28,12 +28,12 @@ export const LEVEL_LOOKUP = LEVEL_NAMES.reduce(
 
 // if the module doesn't support a log level use the closest equivalent
 export const LEVEL_FALLBACK = {
-  silly: [ 'trace', 'dir', 'debug' ],
-  verbose: [ 'trace', 'dir', 'debug' ],
+  silly: [ 'dir', 'debug' ],
+  verbose: [ 'dir', 'debug' ],
   trace: [ 'trace', 'verbose', 'debug' ],
-  dir: [ 'dir', 'trace', 'debug'],
-  log: [ 'log', 'debug' ],
-  fatal: [ 'error'],
+  dir: [ 'dir', 'trace', 'debug' ],
+  log: [ 'debug' ],
+  fatal: [ 'error' ],
 };
 
 class LogAdapter {
@@ -43,29 +43,40 @@ class LogAdapter {
     this.logger = logger;
     return new Proxy(this, {
       get: (target, prop, receiver) => {
-        if (typeof target.logger[prop] === 'function') {
-          // Direct method exists on module, bind it to ensure correct `this` context
-          return target.logger[prop].bind(target.logger);
-        } else if (LEVEL_FALLBACK[prop]) {
-          // Attempt to resolve a fallback method
-          const fallbackMethod = LEVEL_FALLBACK[prop].find(fallback => typeof target.logger[fallback] === 'function');
-          if (fallbackMethod) {
-            // Ensure the fallback method is also correctly bound
-            return target.logger[fallbackMethod].bind(target.logger);
-          }
-        }
-        // Method is not a logger method, attempt to call it on LogAdapter instance
-        if (typeof target[prop] === 'function') {
+        // Use the encapsulated method to determine the correct method name or function
+        const methodName = this._resolveMethodName(prop);
+
+        if (methodName) {
+          return (...args) => this.logger[methodName](...args);
+        } else if (typeof target[prop] === 'function') {
           // Ensure methods on the LogAdapter itself are correctly bound to the LogAdapter instance
           return target[prop].bind(target);
-        }
-        else if (prop in target) {
+        } else if (prop in target) {
           return target[prop];
         }
         // Method not supported, return undefined or throw error
         return undefined; // or throw new Error(`Method ${prop} not supported.`);
       }
     });
+  }
+
+  _avoidIrreleventLogMethod(prop) {
+    // Winston using log() in its implementation, but it's not useful for our purposes
+    return prop === 'log' && this.logger.transports && typeof this.logger.silly === 'function';
+  }
+  _resolveMethodName(prop) {
+    if (typeof this.logger[prop] === 'function' && !this._avoidIrreleventLogMethod(prop)) {
+      // Direct method exists on the logger
+      return prop;
+    } else if (LEVEL_FALLBACK[prop]) {
+      // Attempt to resolve a fallback method
+      const fallbackMethod = LEVEL_FALLBACK[prop].find(fallback => typeof this.logger[fallback] === 'function');
+      if (fallbackMethod) {
+        return fallbackMethod;
+      }
+    }
+    // No direct or fallback method found
+    return undefined;
   }
 
   get logLevels() { return { ...LOG_LEVELS }; }
