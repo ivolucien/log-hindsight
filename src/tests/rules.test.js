@@ -26,8 +26,9 @@ describe('Hindsight Rules Tests', function() {
   it('should overwrite default lineLimits rules when provided', function() {
     const customRules = {
       lineLimits: {
+        maxAge: 60000,
+        maxBytes: 1000,
         maxSize: 5000,
-        maxAge: 60000
       }
     };
     const hindsight = new Hindsight({ rules: customRules });
@@ -90,5 +91,31 @@ describe('Hindsight Rules Tests', function() {
 
       done();
     }, 150); // Wait enough time to ensure the old line is older than maxAge
+  });
+
+  it('should remove log lines when maxBytes limit is exceeded', function() {
+    const customConfig = {
+      rules: {
+        lineLimits: {
+          maxBytes: 500, // Set a low byte limit for testing
+        }
+      }
+    };
+
+    hindsight = new Hindsight(customConfig);
+    // Generate log lines that collectively exceed the maxBytes limit
+    for (let i = 0; i < 10; i++) {
+      hindsight.debug(`Log line ${i} with some additional content to increase size.`);
+    }
+
+    // Apply line limits based on the current configuration
+    hindsight.applyLineLimits();
+
+    // Assert that the total estimated bytes of stored log lines is less than or equal to maxBytes
+    expect(hindsight.logTables.extimatedBytes).to.be.at.most(customConfig.rules.lineLimits.maxBytes);
+
+    // Assert that some log lines have been removed to respect the maxBytes limit
+    const totalLines = Object.values(hindsight.logTables.logTables).reduce((acc, table) => acc + Object.keys(table).length - 1, 0); // -1 for each table's counter property
+    expect(totalLines).to.be.lessThan(10); // Less than 10 since some lines should have been removed
   });
 });
