@@ -34,6 +34,7 @@
     "winston": "^3.11.0"
   },
   "dependencies": {
+    "object-sizeof": "^2.6.4",
     "quick-lru": "^7.0.0",
     "ringbufferjs": "^2.0.0"
   }

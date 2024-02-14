@@ -2,16 +2,17 @@
 
 export const defaultConfig = {
   instanceLimits: {
-    maxSize: 5 * 1000,
-    maxAge: 70 * 1000,
+    maxSize: 5 * 1000, // 5k instances
+    maxAge: 70 * 1000, // 70 second LRU idle timeout
   },
   logger: console,
   moduleLogLevel: process.env.HINDSIGHT_LOG_LEVEL || 'error', // log level of hindsight module itself
   rules: {
     write: { level: 'info' },
     lineLimits: {
-      maxSize: 10 * 1000,
-      maxAge: 70 * 1000,
+      maxAge: 70 * 1000, // 70 seconds
+      maxBytes: 1000 * 1000 * 1000, // 1 GB
+      maxSize: 1000 * 1000, // 1 M lines
     },
   },
 };
@@ -35,44 +36,47 @@ export const envConfigs = {
   test: {
     ...defaultConfig,
     instanceLimits: {
-      maxSize: 5,
       maxAge: 500,
+      maxSize: 5,
     },
     moduleLogLevel: process.env.HINDSIGHT_LOG_LEVEL || 'debug',
     rules: {
       write: { level: 'info' },
       lineLimits: {
-        maxSize: 10,
         maxAge: 100,
+        maxBytes: 1000,
+        maxSize: 10,
       }
     }
   },
   development: {
     ...defaultConfig,
     instanceLimits: {
-      maxSize: 5,
       maxAge: 500,
+      maxSize: 5,
     },
     moduleLogLevel: process.env.HINDSIGHT_LOG_LEVEL || 'trace',
     rules: {
       write: { level: 'info' },
       lineLimits: {
-        maxSize: 10,
         maxAge: 100,
+        maxBytes: 1000,
+        maxSize: 10,
       }
     }
   },
   stress: {
      ...defaultConfig,
      instanceLimits: {
-      maxSize: 50 * 1000,
-      maxAge: 130 * 1000,
+       maxAge: 130 * 1000,
+       maxSize: 50 * 1000,
     },
      rules: {
       write: { level: 'error' },
       lineLimits: {
-        maxSize: 1000 * 1000,
         maxAge: 130 * 1000, // 130 seconds for extended retention period
+        maxBytes: 2000 * 1000 * 1000, // 1 GB
+        maxSize: 1000 * 1000,
       },
     },
   },
