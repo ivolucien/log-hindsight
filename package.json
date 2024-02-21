@@ -6,8 +6,11 @@
   "files": "src/**/*",
   "type": "module",
   "scripts": {
+    "lint": "eslint src",
+    "lint-fix": "eslint src --fix",
     "test": "NODE_ENV=test mocha 'src/tests/**/*.test.js' 'src/tests/**/*.integration.js'",
-    "test-dev": "NODE_ENV=development mocha 'src/tests/**/*.test.js' 'src/tests/**/*.integration.js'"
+    "test-dev": "NODE_ENV=development mocha 'src/tests/**/*.test.js' 'src/tests/**/*.integration.js'",
+    "test-stress": "date -u && NODE_ENV=stress mocha 'src/tests/**/*.stress.js'; date -u"
   },
   "repository": {
     "type": "git",
@@ -29,6 +32,11 @@
     "bunyan": "^1.8.15",
     "chai": "^4.3.7",
     "chai-spies": "^1.1.0",
+    "eslint": "^8.56.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-n": "^16.6.2",
+    "eslint-plugin-promise": "^6.1.1",
     "mocha": "^10.2.0",
     "pino": "^8.18.0",
     "winston": "^3.11.0"
