@@ -1,6 +1,6 @@
 // log-tables.js
-import RingBuffer from 'ringbufferjs';
-import sizeof from 'object-sizeof';
+import RingBuffer from 'ringbufferjs'
+import sizeof from 'object-sizeof'
 
 let sequenceIndex;
 
@@ -14,11 +14,11 @@ class LogTableManager {
    * @param {Object} options - The options for the LogTables object.
    * @param {number} options.maxLineCount - The maximum combined total line count.
    */
-  constructor({ maxLineCount, maxTableBytes: maxBytes = false }) {
-    this.logTables = {};
-    this.maxBytes = maxBytes;
+  constructor ({ maxLineCount, maxBytes = false }) {
+    this.logTables = {}
+    this.maxBytes = maxBytes
     if (sequenceIndex == null) {
-      LogTableManager.initGlobalIndex(maxLineCount);
+      LogTableManager.initGlobalLineTracking(maxLineCount)
     }
   }
 
@@ -35,7 +35,7 @@ class LogTableManager {
     sequenceIndex = new RingBuffer( // init singleton on first constructor call
       maxLineCount, // max total of all log lines
       (line) => LogTableManager._deleteLineFromTable(line.context) // eviction callback for last out lines
-    );
+    )
   }
 
   // remove log line from the table referenced in the line's context object
@@ -58,11 +58,11 @@ class LogTableManager {
    * @param {string} levelName - The name of the log level.
    * @returns {object} - The log table object for the specified level name.
    */
-  get(levelName) {
+  get (levelName) {
     if (!this.logTables[levelName]) {
-      this.logTables[levelName] = { counter: 1 };
+      this.logTables[levelName] = { counter: 1 }
     }
-    return this.logTables[levelName];
+    return this.logTables[levelName]
   }
 
   /**
@@ -71,46 +71,57 @@ class LogTableManager {
    * @param {any} line - The line to be added.
    * @returns {number} - The sequence number of the added line.
    */
-  addLine(levelName, line) {
-    const table = this.get(levelName);
-    line.context.table = table; // Add table and sequence to context as a back-reference when deleting lines
-    line.context.sequence = table.counter++;
+  addLine (levelName, line) {
+    const table = this.get(levelName)
+    line.context.table = table // Add table and sequence to context as a back-reference when deleting lines
+    line.context.sequence = table.counter++
     if (this.maxBytes > 0) {
-      line.context.lineBytes = sizeof(line);
-      this.extimatedBytes += line.context.lineBytes;
+      try {
+        console.log('estimateBefore:', estimatedBytes)
+        const contextSize = Object.keys(line.context).length * 8 // rough estimate of line overhead
+        line.context.lineBytes = sizeof(line.payload || []) + contextSize
+
+        estimatedBytes += line.context.lineBytes
+
+        console.log('contextSize:', contextSize, 'estimateAfter:', estimatedBytes)
+      } catch (e) {
+        console.error(e)
+        // todo: if circular reference error, use more expensive recursive sizeof with "object seen" map
+        // ignore errors from sizeof for now
+      }
     }
 
-    table[line.context.sequence] = line;
+    table[line.context.sequence] = line
 
     // todo: figure out garbage collection for expired lines and the sequence index
-    sequenceIndex.enq(line); // add to sequence index
-    return line.context.sequence;
+    sequenceIndex.enq(line) // add to sequence index
+    return line.context.sequence
   }
 
   /**
    * Soft delete the referenced line, idempotently.
    * @param {Object} context - The line's context object containing the sequence key.
    */
-  deleteLine(context) {
-    const line = sequenceIndex[context.sequence];
+  deleteLine (context) {
+    const line = sequenceIndex[context.sequence]
     if (!line) {
-      return;
+      return
     }
-      // must soft delete from sequence index as it only supports deletion from the tail
-    line.payload = [];
-    line.context.expired = true;
-    LogTableManager._deleteLineFromTable(context);
+    // must soft delete from sequence index as it only supports deletion from the tail
+    line.payload = []
+    line.context.expired = true
+    LogTableManager._deleteLineFromTable(context)
   }
 
   /**
    * Removes previously written lines from the end of the log table, up to the last unwritten line.
    * Lines are removed from both the sequence index and the log table.
    */
-  limitByAlreadyWritten() {
+  limitByAlreadyWritten () {
     while (!sequenceIndex.isEmpty() && sequenceIndex.peek()?.context?.written) {
-      sequenceIndex.deq();
+      const line = sequenceIndex.deq()
       // and from the log table
-      LogTableManager._deleteLineFromTable(line.context);
+      LogTableManager._deleteLineFromTable(line.context)
     }
   }
 
@@ -119,15 +130,15 @@ class LogTableManager {
    *
    * @param {number} maxLineAgeMs - The maximum age of log lines in milliseconds.
    */
-  limitBymaxAge(maxLineAgeMs) {
-    const expiration = Date.now() - maxLineAgeMs;
+  limitBymaxAge (maxLineAgeMs) {
+    const expiration = Date.now() - maxLineAgeMs
 
     // todo? handle async to avoid caller code delay
     while (!sequenceIndex.isEmpty() && sequenceIndex.peek()?.context?.timestamp < expiration) {
       // remove sequence index reference
-      const line = sequenceIndex.deq();
+      const line = sequenceIndex.deq()
       // and from the log table
-      LogTableManager._deleteLineFromTable(line.context);
+      LogTableManager._deleteLineFromTable(line.context)
       // todo? support expiration callback parameter for each line removed
     }
   }
@@ -135,22 +146,21 @@ class LogTableManager {
   /**
    * Removes log lines that exceed the specified maximum line count.
    */
-  limitBymaxSize()  {} // automatic for ringbufferjs, triggers an optional eviction callback on overflow
+  limitBymaxSize () {} // automatic for ringbufferjs, triggers an optional eviction callback on overflow
 
   /**
    * Removes oldest log lines that exceed the specified maximum aggregate line byte size.
    */
-  limitBymaxBytes() {
+  limitBymaxBytes () {
     // how to prioritize which lines to remove? by level? by age? by size?
     // for now just trim the oldest lines from the sequence index
     // todo? support removal strategies like least-priority-first, completed-sessions-first, etc.
     while (this.extimatedBytes > this.maxBytes) {
       const line = sequenceIndex.deq();
       // and this also reduces the estimated byte count
-      LogTableManager._deleteLineFromTable(line.context);
+      LogTableManager._deleteLineFromTable(line.context)
     }
-
   }
 }
 
-export default LogTableManager;
+export default LogTableManager
