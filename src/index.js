@@ -72,7 +72,6 @@ export default class Hindsight {
     const instanceSignature = Hindsight.getInstanceIndexString(perLineFields)
     this._debug('constructor', { instanceSignature, moduleKeys: Object.keys(this.module) })
     this._initWrapper()
-
     if (HindsightInstances == null) {
       Hindsight.initSingletonTracking(config?.instanceLimits)
     }
@@ -267,7 +266,7 @@ export default class Hindsight {
     if (context.written !== true) {
       context.written = true
       this[name].writeCounter++
-      this.module[name](...payload) // pass to the original logger method now
+      this.adapter[name](...payload) // pass to the logger universal adapter
     }
   }
 

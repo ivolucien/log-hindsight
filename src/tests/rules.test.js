@@ -3,7 +3,6 @@ import Hindsight from '../index.js'
 import { getConfig } from '../config.js'
 import LogTableManager from '../log-tables.js'
 
-
 describe('Hindsight Rules Tests', function () {
   const envConfig = getConfig()
   const customConfig = {

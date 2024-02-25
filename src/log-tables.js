@@ -2,12 +2,12 @@
 import RingBuffer from 'ringbufferjs'
 import sizeof from 'object-sizeof'
 
-let sequenceIndex;
+let sequenceIndex
+let estimatedBytes = 0
 
 class LogTableManager {
-  maxLineAgeMs;
-  maxBytes;
-  extimatedBytes;
+  maxLineAgeMs
+  maxBytes
 
   /**
    * Constructs a LogTableManager object, initializing the global sequence index if required.
@@ -45,7 +45,6 @@ class LogTableManager {
     estimatedBytes = Math.max(0, estimatedBytes - context.lineBytes) // stay >= 0
 
     delete levelTable[context.sequence]
-    console.log(`bytes after cleanup: ${estimatedBytes}`)
   }
 
   static get estimatedBytes () { return estimatedBytes }
@@ -79,13 +78,10 @@ class LogTableManager {
     line.context.sequence = table.counter++
     if (this.maxBytes > 0) {
       try {
-        console.log('estimateBefore:', estimatedBytes)
         const contextSize = Object.keys(line.context).length * 8 // rough estimate of line overhead
         line.context.lineBytes = sizeof(line.payload || []) + contextSize
 
         estimatedBytes += line.context.lineBytes
-
-        console.log('contextSize:', contextSize, 'estimateAfter:', estimatedBytes)
       } catch (e) {
         console.error(e)
         // todo: if circular reference error, use more expensive recursive sizeof with "object seen" map
@@ -157,7 +153,6 @@ class LogTableManager {
     // how to prioritize which lines to remove? by level? by age? by size?
     // for now just trim the oldest lines from the sequence index
     // todo? support removal strategies like least-priority-first, completed-sessions-first, etc.
-    console.log('sequenceIndex.size:', sequenceIndex.size())
     while (estimatedBytes > this.maxBytes && sequenceIndex.size() > 0) {
       const line = sequenceIndex.deq()
 
