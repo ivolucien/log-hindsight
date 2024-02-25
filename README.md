@@ -91,6 +91,8 @@ const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' }
 ### Planned for v0.2.0
 - Support for the common denominator of common logger modules
 - Limit buffered log data based on overall memory use and/or custom criteria
+
+### Planned for v0.3.0
 - Dynamic/custom filtering and transforms
 - Deferred log level assignment
 
