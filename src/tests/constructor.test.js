@@ -20,8 +20,27 @@ describe('Hindsight Constructor Tests', function () {
     expect(obj.module).to.equal(console)
   })
 
-  it('should explicitly use console when passed', function() {
-    const obj = validateConstructor(console);
-    expect(obj.module).to.equal(console);
-  });
-});
+  it('should explicitly use console when passed', function () {
+    const obj = validateConstructor(console)
+    expect(obj.module).to.equal(console)
+  })
+
+  it('should set custom logger when passed', function () {
+    const customLogger = {
+      log: () => {},
+      error: () => {},
+      warn: () => {},
+      info: () => {},
+      debug: () => {}
+    }
+    const obj = validateConstructor(customLogger)
+    expect(obj.module).to.equal(customLogger)
+  })
+
+  it('should throw an error for invalid logger', function () {
+    const invalidLogger = 'invalidLogger'
+    expect(() => {
+      new Hindsight({ logger: invalidLogger })
+    }).to.throw(Error, 'Invalid logger')
+  })
+})

@@ -73,8 +73,16 @@ describe('Environment configuration validation tests', function () {
         let customConfig = getConfig({ rules: { write: { level: 'warn' } } }, env)
         expect(customConfig.rules.write.level).to.equal('warn')
         // other values is still the default
-        expect(customConfig.rules.lineLimits.maxSize).to.equal(config.rules.lineLimits.maxSize);
-      });
-    });
-  });
-});
+        expect(customConfig.rules.lineLimits.maxSize).to.equal(config.rules.lineLimits.maxSize)
+
+        customConfig = getConfig({ rules: { lineLimits: { maxSize: 300 } } }, env)
+        expect(customConfig.rules.lineLimits).to.deep.equal({
+          maxSize: 300,
+          maxAge: config.rules.lineLimits.maxAge,
+          maxBytes: config.rules.lineLimits.maxBytes
+        })
+        expect(customConfig.rules.write.level).to.equal(config.rules.write.level)
+      })
+    })
+  })
+})

@@ -54,6 +54,57 @@ describe('Hindsight Rules Tests', function () {
     expect(hindsight.rules.lineLimits.maxAge).to.eql(envConfig.rules.lineLimits.maxAge) // default
   })
 
+  it('should only log messages that meet or exceed the configured log level', async function () {
+    const printed = []
+    const store = (msg) => printed.push(msg)
+    const stub = { debug: store, info: store, warn: store, error: store }
+    const customConfig = {
+      logger: stub,
+      rules: {
+        write: { level: 'warn' } // Only log warnings or above
+      }
+    }
+    const hindsight = new Hindsight(customConfig)
+
+    hindsight.debug('debug message should be buffered.')
+    hindsight.info('info message should be buffered.')
+    hindsight.warn('warning message should be logged.')
+    hindsight.error('error message should be logged.')
+
+    // Assuming Hindsight or LogTableManager has a method to retrieve all logged messages
+    const linesRingBuffer = hindsight.logTables.sequenceIndex
+    const loggedMessages = linesRingBuffer.peekN(linesRingBuffer.size()).map(line => line.payload[0])
+
+    expect(loggedMessages).to.have.lengthOf(2) // only those below log level are buffered
+    expect(loggedMessages.some(([msg]) => msg.includes('debug'))).to.be.true
+    expect(loggedMessages.some(([msg]) => msg.includes('info'))).to.be.true
+
+    expect(printed).to.have.lengthOf(2) // only those at or above log level are printed
+    expect(printed.some(([msg]) => msg.includes('warn'))).to.be.true
+    expect(printed.some(([msg]) => msg.includes('error'))).to.be.true
+  })
+
+  it('should log at error level if fatal error logged on console', async function () {
+    const printed = []
+    const store = (msg) => printed.push(msg)
+    const stub = { debug: store, info: store, warn: store, error: store }
+    const customConfig = { logger: stub}
+    const hindsight = new Hindsight(customConfig)
+
+    hindsight.error('error message should be logged.')
+    hindsight.fatal('fatal message should be logged.')
+
+    const errorTable = hindsight.logTables.get('error')
+    expect(errorTable[0]).to.not.exist // printed, not buffered
+
+    const fatalTable = hindsight.logTables.get('fatal')
+    expect(fatalTable[0]).to.not.exist // printed, not buffered
+
+    expect(printed).to.have.lengthOf(2)
+    expect(printed.some(([msg]) => msg.includes('error'))).to.be.true
+    expect(printed.some(([msg]) => msg.includes('fatal'))).to.be.true
+  })
+
   it('should limit the total number of log lines stored based on lineLimits.maxSize setting', function () {
     const maxSize = 3
     const customRules = {
@@ -122,7 +173,6 @@ describe('Hindsight Rules Tests', function () {
     hindsight.applyLineLimits()
 
     // Assert that the total estimated bytes of stored log lines is less than or equal to maxBytes
-    console.log(customConfig.rules.lineLimits)
     expect(LogTableManager.estimatedBytes).to.be.at.most(customConfig.rules.lineLimits.maxBytes)
 
     // Assert that some log lines have been removed to respect the maxBytes limit
