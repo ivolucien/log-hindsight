@@ -31,7 +31,8 @@ class LogTableManager {
    * @param {number} maxLineCount - The maximum combined total of all log lines.
    * @returns {void}
    */
-  static initGlobalIndex(maxLineCount) {
+  static initGlobalLineTracking (maxLineCount) {
+    estimatedBytes = 0
     sequenceIndex = new RingBuffer( // init singleton on first constructor call
       maxLineCount, // max total of all log lines
       (line) => LogTableManager._deleteLineFromTable(line.context) // eviction callback for last out lines
@@ -39,17 +40,18 @@ class LogTableManager {
   }
 
   // remove log line from the table referenced in the line's context object
-  static _deleteLineFromTable(context) {
-    const levelTable = context.table;
-    if (levelTable.byteEstimate) {
-      levelTable.byteEstimate = Math.max(0, lineTable - context.lineBytes || 0);
-    }
+  static _deleteLineFromTable (context) {
+    const levelTable = context.table
+    estimatedBytes = Math.max(0, estimatedBytes - context.lineBytes) // stay >= 0
 
-    delete levelTable[context.sequence];
+    delete levelTable[context.sequence]
+    console.log(`bytes after cleanup: ${estimatedBytes}`)
   }
 
-  get sequenceIndex() {
-    return sequenceIndex; // undefined if not initialized by constructor
+  static get estimatedBytes () { return estimatedBytes }
+
+  get sequenceIndex () {
+    return sequenceIndex // undefined if not initialized by constructor
   }
 
   /**
@@ -155,8 +157,10 @@ class LogTableManager {
     // how to prioritize which lines to remove? by level? by age? by size?
     // for now just trim the oldest lines from the sequence index
     // todo? support removal strategies like least-priority-first, completed-sessions-first, etc.
-    while (this.extimatedBytes > this.maxBytes) {
-      const line = sequenceIndex.deq();
+    console.log('sequenceIndex.size:', sequenceIndex.size())
+    while (estimatedBytes > this.maxBytes && sequenceIndex.size() > 0) {
+      const line = sequenceIndex.deq()
+
       // and this also reduces the estimated byte count
       LogTableManager._deleteLineFromTable(line.context)
     }
