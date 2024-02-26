@@ -4,7 +4,7 @@ import Hindsight from '../index.js'
 
 const MAX_LINE_COUNT_LIMIT = 1000 * 1000 * 1000 // 1 billion
 const MAX_AGE_MS_LIMIT = 1000 * 60 * 60 * 24 * 30 // 30 days
-
+const MAX_BYTE_LIMIT =
 // Define required limits and requirements for *default* env config values
 const EXPECTED_LOG_LEVELS = ['trace', 'debug', 'info', 'warn', 'error']
 
@@ -44,11 +44,14 @@ describe('Environment configuration validation tests', function () {
         expect(config).to.have.nested.property('rules.lineLimits.maxAge')
           .to.be.a('number').that.is.at.least(2)
           .and.is.at.most(MAX_AGE_MS_LIMIT)
+        expect(config).to.have.nested.property('rules.lineLimits.maxBytes')
+          .to.be.a('number').that.is.at.least(2)
+          .and.is.at.most(MAX_BYTE_LIMIT)
       })
 
       it('should override default values with manually specified config values', function () {
         const customConfig = {
-          instanceLimits: { maxSize: 100, maxAge: 200 },
+          instanceLimits: { maxSize: 100, maxAge: 200, maxBytes: 10 * 1024 },
           rules: { lineLimits: { maxSize: 300, maxAge: 400 } }
         }
         const overriddenConfig = getConfig(customConfig, env)
@@ -57,6 +60,7 @@ describe('Environment configuration validation tests', function () {
         expect(overriddenConfig.instanceLimits.maxAge).to.equal(customConfig.instanceLimits.maxAge)
         expect(overriddenConfig.rules.lineLimits.maxSize).to.equal(customConfig.rules.lineLimits.maxSize)
         expect(overriddenConfig.rules.lineLimits.maxAge).to.equal(customConfig.rules.lineLimits.maxAge)
+        expect(overriddenConfig.rules.lineLimits.maxBytes).to.equal(customConfig.rules.lineLimits.maxBytes)
       })
 
       it('should not throw errors when creating new Hindsight objects with various config values', function () {

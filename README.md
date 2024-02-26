@@ -53,7 +53,7 @@ See [USE_CASES.md](USE_CASES.md) for more interesting use cases and implementati
 | `instanceLimits`  | Max count and age for log instances   | `{ maxSize: 5000, maxAge: 70000 }` |
 | `logger`          | Logger module used to write output    | `console`           |
 | `moduleLogLevel`  | Internal log-hindsight log level      | `'error'`           |
-| `rules`           | Rules for writing and buffer limits | `{ write: { level: 'error' }, lineLimits: { maxSize: 10000, maxAge: 70000 } }` |
+| `rules`           | Rules for writing and buffer limits | `{ write: { level: 'info' }, lineLimits: { maxSize: 1,000,0000, maxAge: 70,000, maxBytes: 1GB } }` |
 
 ## Manual Child Logger Creation
 
@@ -66,14 +66,14 @@ childLogger.info('Session-specific log message');
 ```
 
 ## Automated Singleton Child Logger Get or Create
-If you wish to reuse a single logger instance for across separate calls of a task or API session, use the static `getOrCreateChild` method to retrieve a child logger for a known unique ID -- it will create one if it doesn't exist yet.
+If you wish to reuse a single logger instance across separate calls of a task or API session, use the static `getOrCreateChild` method to retrieve a child logger for a known unique ID -- it will create one if it doesn't exist yet.
 
 ```javascript
 // child logger created for the first log call for this session
 const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' });
 
 <later...>
-// a separate API call of the that same session, gets the same child logger (if within the same process)
+// a separate call processing that same session, gets the same child logger (if within the same process)
 const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' });
 ```
 
@@ -86,29 +86,27 @@ const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' }
 - Buffer log lines that fall below the current log level, limited by max count and age
 - Write historical lines from a logger based on a dynamically specified log level
 
-## Roadmap
-
-### Planned for v0.2.0
+### v0.2.0 Unstable development version with basic support for common loggers - 2024-02-25
 - Support for the common denominator of common logger modules
 - Limit buffered log data based on overall memory use and/or custom criteria
 
+## Roadmap
+
 ### Planned for v0.3.0
-- Dynamic/custom filtering and transforms
-- Deferred log level assignment
+- Support for on-the-fly write rule changes (like current log level)
+- Caller supplied function to decorate each line with metadata properties
+- Caller supplied function to choose the write log level based on app requirements
 
 ### Future Feature Wishlist
 - Option for centralized storage of buffered log data using your preferred storage system
-hold
 
 ## Intended Use Cases (no later than v1.0.0)
 
  * Retroactively output trace and/or debug log data when a task/request throws an error
  * Log a chosen % of tasks/requests at trace level
  * Options to automatically strip specified data from logged objects
- * Throttle log level when log data volume over a chosen thres
+ * Throttle log level when log data volume over a chosen threshold
 
 ## Contributors
 
 This project is in the early stages of development and the author welcomes your input. If you're interested in contributing to log-hindsight, please contact me to coordinate on features. At this stage, it's too early in development for submitting PRs without coordination as the interface isn't stable yet.
-
-
