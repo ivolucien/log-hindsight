@@ -11,7 +11,7 @@ export const defaultConfig = {
     write: { level: 'info' },
     lineLimits: {
       maxAge: 70 * 1000, // 70 seconds
-      maxBytes: 1000 * 1000 * 1000, // 1 GB
+      maxBytes: 100 * 1000 * 1000, // 100 MB
       maxSize: 1000 * 1000 // 1 M lines
     }
   }
@@ -69,15 +69,14 @@ export const envConfigs = {
     ...defaultConfig,
     instanceLimits: {
       maxAge: 130 * 1000,
-      maxBytes: 2000 * 1000 * 1000, // 2GB
       maxSize: 50 * 1000
     },
     rules: {
       write: { level: 'error' },
       lineLimits: {
         maxAge: 130 * 1000, // 130 seconds for extended retention period
-        maxBytes: 2000 * 1000 * 1000, // 2 GB
-        maxSize: 1000 * 1000
+        maxBytes: 500 * 1000 * 1000, // 500 MB
+        maxSize: 10 * 1000 * 1000 // 10 M lines
       }
     }
   },

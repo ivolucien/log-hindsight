@@ -2,9 +2,11 @@ import { expect } from 'chai'
 import { getConfig } from '../config.js'
 import Hindsight from '../index.js'
 
-const MAX_LINE_COUNT_LIMIT = 1000 * 1000 * 1000 // 1 billion
+// max values to be used as module default config values, caller can override
+const MAX_LINE_COUNT_LIMIT = 10 * 1000 * 1000 // 10 million
 const MAX_AGE_MS_LIMIT = 1000 * 60 * 60 * 24 * 30 // 30 days
-const MAX_BYTE_LIMIT =
+const MAX_BYTE_LIMIT = 1000 * 1000 * 1000 // 1 GB
+
 // Define required limits and requirements for *default* env config values
 const EXPECTED_LOG_LEVELS = ['trace', 'debug', 'info', 'warn', 'error']
 
@@ -52,7 +54,7 @@ describe('Environment configuration validation tests', function () {
       it('should override default values with manually specified config values', function () {
         const customConfig = {
           instanceLimits: { maxSize: 100, maxAge: 200, maxBytes: 10 * 1024 },
-          rules: { lineLimits: { maxSize: 300, maxAge: 400 } }
+          rules: { lineLimits: { maxSize: 300, maxAge: 400, maxBytes: 99 * 1000 } }
         }
         const overriddenConfig = getConfig(customConfig, env)
 
