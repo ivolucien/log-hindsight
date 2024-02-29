@@ -5,9 +5,9 @@ By the first release log-hindsight will support multiple logging modules, but at
 
 ## Features
 _Most of this is already working but none of it has been vetted for production use, yet._
-- **Retroactive Log History Dump**: Automatically output previously buffered log entries when specific conditions are met, such as an error occurring.
+- **Retroactive Log History Dump**: Trigger previously buffered log entries for a given hindsight object to be written out when the calling application detects specific conditions, such as an error occurring.
 - **Session-specific Logging**: Easily create and manage log contexts for individual user sessions or operational tasks.
-- **Configurable Log Retention**: Customize how long historical logs are retained in the buffer before being discarded, based on count or age.
+- **Configurable Log Retention**: Customize how long historical logs are retained in the buffer before being discarded, based on maximum line count, memory consumptions or time since the line was buffered.
 
 ## Planned Features
 - **Integration with Standard Logging Libraries**: Designed to wrap around popular logging modules, currently only supports the console logger.
@@ -53,7 +53,14 @@ See [USE_CASES.md](USE_CASES.md) for more interesting use cases and implementati
 | `instanceLimits`  | Max count and age for log instances   | `{ maxSize: 5000, maxAge: 70000 }` |
 | `logger`          | Logger module used to write output    | `console`           |
 | `moduleLogLevel`  | Internal log-hindsight log level      | `'error'`           |
-| `rules`           | Rules for writing and buffer limits | `{ write: { level: 'info' }, lineLimits: { maxSize: 1,000,0000, maxAge: 70,000, maxBytes: 1GB } }` |
+| `rules`           | Rules for writing and buffer limits | `{ write: { level: 'info' }, lineLimits: { maxSize: 1,000,0000, maxAge: 70,000, maxBytes: 100 MB } }` |
+
+Configuration defaults are merged by priority:
+ - constructor parameter is top priority, if any
+ - else the NODE_ENV variable if there's a match in config.js
+ - otherwise the default values in config.js - which are also the production env defaults
+
+See also: src/config.js for the full list of configuration options and their defaults per environment.
 
 ## Manual Child Logger Creation
 
@@ -76,29 +83,6 @@ const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' }
 // a separate call processing that same session, gets the same child logger (if within the same process)
 const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' });
 ```
-
-## Change Log
-
-### v0.1.0 Unstable development version with roughed out functionality - 2024-02-04
-- Wrapper support for console logger
-- Support logger singletons for the local process, unique per a set of static values, like a session ID
-- Manage logger singleton quantity and lifespan, using an LRU cache with a max instance count and age
-- Buffer log lines that fall below the current log level, limited by max count and age
-- Write historical lines from a logger based on a dynamically specified log level
-
-### v0.2.0 Unstable development version with basic support for common loggers - 2024-02-25
-- Support for the common denominator of common logger modules
-- Limit buffered log data based on overall memory use and/or custom criteria
-
-## Roadmap
-
-### Planned for v0.3.0
-- Support for on-the-fly write rule changes (like current log level)
-- Caller supplied function to decorate each line with metadata properties
-- Caller supplied function to choose the write log level based on app requirements
-
-### Future Feature Wishlist
-- Option for centralized storage of buffered log data using your preferred storage system
 
 ## Intended Use Cases (no later than v1.0.0)
 

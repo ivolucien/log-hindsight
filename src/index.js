@@ -134,7 +134,7 @@ export default class Hindsight {
   }
 
   /**
-   * Iterates over log level tables not below levelCutoff and wries all lines.
+   * Iterates over log level tables not below levelCutoff and writes all lines.
    * Call this to write this session's history. (presumes you've stored session Id in perLineFields)
    *
    * @param {string} levelCutoff - minimum required log level to write.
