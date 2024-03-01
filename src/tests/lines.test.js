@@ -6,15 +6,13 @@ import LogTableManager from '../log-tables.js'
 describe('Hindsight Rules Tests', function () {
   const envConfig = getConfig()
   const customConfig = {
-    rules: {
-      lineLimits: {
-        maxBytes: 500 // Set a low byte limit for testing
-      }
+    lineLimits: {
+      maxBytes: 500 // Set a low byte limit for testing
     }
   }
 
   beforeEach(() => {
-    const { rules: { lineLimits } } = getConfig(customConfig)
+    const { lineLimits } = getConfig(customConfig)
     Hindsight.initSingletonTracking()
     LogTableManager.initGlobalLineTracking(lineLimits.maxSize) // reset static line index
   })
@@ -32,26 +30,25 @@ describe('Hindsight Rules Tests', function () {
     expect(hindsight.rules.write).to.eql(customRules.write)
   })
 
-  it('should overwrite default lineLimits rules when provided', function () {
-    const customRules = {
-      lineLimits: {
-        maxAge: 60000,
-        maxBytes: 1000,
-        maxSize: 5000
-      }
+  it('should overwrite default lineLimits when provided', function () {
+    const lineLimits = {
+      maxAge: 60000,
+      maxBytes: 1000,
+      maxSize: 5000
     }
-    const hindsight = new Hindsight({ rules: customRules })
-    expect(hindsight.rules.lineLimits).to.eql(customRules.lineLimits)
+    const hindsight = new Hindsight({ lineLimits })
+    expect(hindsight.lineLimits).to.eql(lineLimits)
   })
 
-  it('should overwrite subsest of default rules, keeping default for unspecified rules', function () {
-    const customRules = {
-      lineLimits: { maxSize: 5000 }
+  it('should overwrite subset of default limits, keeping default for unspecified limits', function () {
+    const lineLimits = {
+      maxSize: 5000
     }
-    const hindsight = new Hindsight({ rules: customRules })
-    expect(hindsight.rules.lineLimits.maxSize).to.eql(customRules.lineLimits.maxSize) // modified
+    const hindsight = new Hindsight({ lineLimits })
+    expect(hindsight.lineLimits.maxAge).to.eql(envConfig.lineLimits.maxAge) // default
+    expect(hindsight.lineLimits.maxSize).to.eql(lineLimits.maxSize) // modified
+
     expect(hindsight.rules.write).to.eql(envConfig.rules.write) // default
-    expect(hindsight.rules.lineLimits.maxAge).to.eql(envConfig.rules.lineLimits.maxAge) // default
   })
 
   it('should only log messages that meet or exceed the configured log level', async function () {
@@ -107,11 +104,10 @@ describe('Hindsight Rules Tests', function () {
 
   it('should limit the total number of log lines stored based on lineLimits.maxSize setting', function () {
     const maxSize = 3
-    const customRules = {
-      lineLimits: { maxSize }
-    }
-    const customConfig = getConfig({ rules: customRules })
-    expect(customConfig.rules.lineLimits.maxSize).to.equal(maxSize)
+    const lineLimits = { maxSize }
+
+    const customConfig = getConfig({ lineLimits })
+    expect(customConfig.lineLimits.maxSize).to.equal(maxSize)
 
     LogTableManager.initGlobalLineTracking(maxSize) // reset static line index
 
@@ -130,12 +126,10 @@ describe('Hindsight Rules Tests', function () {
   })
 
   it('should remove log lines older than lineLimits.maxAge setting', function (done) {
-    const customRules = {
-      lineLimits: {
-        maxAge: 100 // Lines older than 100ms should be removed
-      }
+    const lineLimits = {
+      maxAge: 100 // Lines older than 100ms should be removed
     }
-    const hindsight = new Hindsight({ rules: customRules })
+    const hindsight = new Hindsight({ lineLimits })
 
     hindsight.debug('Old line')
 
@@ -152,7 +146,7 @@ describe('Hindsight Rules Tests', function () {
       // Validate that no log lines are older than the current time minus maxAge
       expect(linesRemaining).to.equal(1)
       const msSinceSecondLine = currentTime - line.context.timestamp
-      expect(msSinceSecondLine).to.be.below(customRules.lineLimits.maxAge)
+      expect(msSinceSecondLine).to.be.below(lineLimits.maxAge)
 
       done()
     }, 150) // Wait enough time to ensure the old line is older than maxAge
@@ -162,7 +156,7 @@ describe('Hindsight Rules Tests', function () {
     const hindsight = new Hindsight(customConfig)
 
     expect(LogTableManager.estimatedBytes).to.equal(0)
-    expect(hindsight.logTables.maxBytes).to.equal(customConfig.rules.lineLimits.maxBytes)
+    expect(hindsight.logTables.maxBytes).to.equal(customConfig.lineLimits.maxBytes)
 
     // Generate log lines that collectively exceed the maxBytes limit
     for (let i = 0; i < 10; i++) {
@@ -173,7 +167,7 @@ describe('Hindsight Rules Tests', function () {
     hindsight.applyLineLimits()
 
     // Assert that the total estimated bytes of stored log lines is less than or equal to maxBytes
-    expect(LogTableManager.estimatedBytes).to.be.at.most(customConfig.rules.lineLimits.maxBytes)
+    expect(LogTableManager.estimatedBytes).to.be.at.most(customConfig.lineLimits.maxBytes)
 
     // Assert that some log lines have been removed to respect the maxBytes limit
     const totalLines = Object.values(hindsight.logTables.logTables).reduce((acc, table) => acc + Object.keys(table).length - 1, 0) // -1 for each table's counter property

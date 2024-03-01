@@ -48,12 +48,13 @@ See [USE_CASES.md](USE_CASES.md) for more interesting use cases and implementati
 
 ## Configuration Options
 
-| Option            | Description                           | Default             |
-|-------------------|---------------------------------------|---------------------|
+| Option            | Description                           | Default                            |
+|-------------------|---------------------------------------|------------------------------------|
+| `logger`          | Logger module used to write output    | `console`                          |
 | `instanceLimits`  | Max count and age for log instances   | `{ maxSize: 5000, maxAge: 70000 }` |
-| `logger`          | Logger module used to write output    | `console`           |
-| `moduleLogLevel`  | Internal log-hindsight log level      | `'error'`           |
-| `rules`           | Rules for writing and buffer limits | `{ write: { level: 'info' }, lineLimits: { maxSize: 1,000,0000, maxAge: 70,000, maxBytes: 100 MB } }` |
+| `lineLimits`      | Line buffer limits                    | `{ maxSize: 1,000,0000, maxAge: 70,000, maxBytes: 100 MB } }` |
+| `rules`           | Rules for writing and buffer limits   | `{ write: { level: 'info' }`       |
+| `moduleLogLevel`  | log-hindsight diagnostic log level    | `'error'`                          |
 
 Configuration defaults are merged by priority:
  - constructor parameter is top priority, if any

@@ -22,7 +22,7 @@ describe('Environment configuration validation tests', function () {
       })
 
       it('should have all required fields', function () {
-        expect(config).to.have.all.keys('instanceLimits', 'logger', 'moduleLogLevel', 'rules')
+        expect(config).to.have.all.keys('instanceLimits', 'lineLimits', 'logger', 'moduleLogLevel', 'rules')
       })
 
       it('should have a valid logger', function () {
@@ -40,13 +40,13 @@ describe('Environment configuration validation tests', function () {
       })
 
       it('should have valid lineLimits settings in rules', function () {
-        expect(config).to.have.nested.property('rules.lineLimits.maxSize')
+        expect(config).to.have.nested.property('lineLimits.maxSize')
           .to.be.a('number').that.is.at.least(2)
           .and.is.at.most(MAX_LINE_COUNT_LIMIT)
-        expect(config).to.have.nested.property('rules.lineLimits.maxAge')
+        expect(config).to.have.nested.property('lineLimits.maxAge')
           .to.be.a('number').that.is.at.least(2)
           .and.is.at.most(MAX_AGE_MS_LIMIT)
-        expect(config).to.have.nested.property('rules.lineLimits.maxBytes')
+        expect(config).to.have.nested.property('lineLimits.maxBytes')
           .to.be.a('number').that.is.at.least(2)
           .and.is.at.most(MAX_BYTE_LIMIT)
       })
@@ -54,21 +54,21 @@ describe('Environment configuration validation tests', function () {
       it('should override default values with manually specified config values', function () {
         const customConfig = {
           instanceLimits: { maxSize: 100, maxAge: 200, maxBytes: 10 * 1024 },
-          rules: { lineLimits: { maxSize: 300, maxAge: 400, maxBytes: 99 * 1000 } }
+          lineLimits: { maxSize: 300, maxAge: 400, maxBytes: 99 * 1000 }
         }
         const overriddenConfig = getConfig(customConfig, env)
 
         expect(overriddenConfig.instanceLimits.maxSize).to.equal(customConfig.instanceLimits.maxSize)
         expect(overriddenConfig.instanceLimits.maxAge).to.equal(customConfig.instanceLimits.maxAge)
-        expect(overriddenConfig.rules.lineLimits.maxSize).to.equal(customConfig.rules.lineLimits.maxSize)
-        expect(overriddenConfig.rules.lineLimits.maxAge).to.equal(customConfig.rules.lineLimits.maxAge)
-        expect(overriddenConfig.rules.lineLimits.maxBytes).to.equal(customConfig.rules.lineLimits.maxBytes)
+        expect(overriddenConfig.lineLimits.maxSize).to.equal(customConfig.lineLimits.maxSize)
+        expect(overriddenConfig.lineLimits.maxAge).to.equal(customConfig.lineLimits.maxAge)
+        expect(overriddenConfig.lineLimits.maxBytes).to.equal(customConfig.lineLimits.maxBytes)
       })
 
       it('should not throw errors when creating new Hindsight objects with various config values', function () {
         const customConfig = {
           instanceLimits: { maxSize: 100, maxAge: 200 },
-          rules: { lineLimits: { maxSize: 300, maxAge: 400 } }
+          lineLimits: { maxSize: 300, maxAge: 400 }
         }
 
         expect(() => new Hindsight(customConfig)).to.not.throw()
@@ -79,13 +79,13 @@ describe('Environment configuration validation tests', function () {
         let customConfig = getConfig({ rules: { write: { level: 'warn' } } }, env)
         expect(customConfig.rules.write.level).to.equal('warn')
         // other values is still the default
-        expect(customConfig.rules.lineLimits.maxSize).to.equal(config.rules.lineLimits.maxSize)
+        expect(customConfig.lineLimits.maxSize).to.equal(config.lineLimits.maxSize)
 
-        customConfig = getConfig({ rules: { lineLimits: { maxSize: 300 } } }, env)
-        expect(customConfig.rules.lineLimits).to.deep.equal({
+        customConfig = getConfig({ lineLimits: { maxSize: 300 } }, env)
+        expect(customConfig.lineLimits).to.deep.equal({
           maxSize: 300,
-          maxAge: config.rules.lineLimits.maxAge,
-          maxBytes: config.rules.lineLimits.maxBytes
+          maxAge: config.lineLimits.maxAge,
+          maxBytes: config.lineLimits.maxBytes
         })
         expect(customConfig.rules.write.level).to.equal(config.rules.write.level)
       })

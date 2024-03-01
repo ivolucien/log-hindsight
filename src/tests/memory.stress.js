@@ -55,9 +55,9 @@ describe('Line buffer volume test', function () {
     this.timeout(60 * TimeOverride)
     const config = {
       rules: {
-        write: { level: 'error' }, // set write level to error so info logs are buffered
-        lineLimits: { maxAge: 50 * TimeOverride } // some lines age out before the test ends
-      }
+        write: { level: 'error' } // set write level to error so info logs are buffered
+      },
+      lineLimits: { maxAge: 50 * TimeOverride } // some lines age out before the test ends
     }
 
     const hindsight = new Hindsight(config)
@@ -73,7 +73,7 @@ describe('Line buffer volume test', function () {
       )
     }
     try {
-      const maxAgeWithSlack = config.rules.lineLimits.maxAge - 100 // allow time to delete old lines
+      const maxAgeWithSlack = config.lineLimits.maxAge - 100 // allow time to delete old lines
       const start = new Date()
       for (let i = 0; i < numberOfEntries && maxTestTime > new Date() - testStart; i += 10) {
         await Promise.all([

@@ -7,14 +7,12 @@ describe('Hindsight applyLineLimits.Rules Tests', function () {
 
   beforeEach(function () {
     // Setup Hindsight with custom limit rules for testing
-    const customRules = {
-      lineLimits: {
-        maxSize: 5,
-        maxAge: 50 // 50 milliseconds
-      }
+    const lineLimits = {
+      maxSize: 5,
+      maxAge: 50 // 50 milliseconds
     }
-    LogTableManager.initGlobalLineTracking(customRules.lineLimits.maxSize) // reset static line index
-    hindsight = new Hindsight({ rules: customRules })
+    LogTableManager.initGlobalLineTracking(lineLimits.maxSize) // reset static line index
+    hindsight = new Hindsight({ lineLimits })
     hindsight.logTables.sequenceIndex.deqN(hindsight.logTables.sequenceIndex.size()) // Clear line index
   })
 
@@ -26,7 +24,7 @@ describe('Hindsight applyLineLimits.Rules Tests', function () {
 
     // Check if the number of log lines are limited to 5
     const logTable = hindsight.logTables.get('debug')
-    const expectedLogTableKeys = hindsight.rules.lineLimits.maxSize + 1 // +1 for the counter key
+    const expectedLogTableKeys = hindsight.lineLimits.maxSize + 1 // +1 for the counter key
     hindsight._debug({ logTable, tableKeys: Object.keys(logTable) })
     expect(Object.keys(logTable).length).to.be.at.most(expectedLogTableKeys)
   })

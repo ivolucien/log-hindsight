@@ -3,8 +3,6 @@ import LogAdapter from './adapter.js'
 import LogTableManager from './log-tables.js'
 import QuickLRU from 'quick-lru'
 
-// todo: clean up debug logging before release
-
 let instanceId = 0 // Base counter for formatted instanceID as 'id' + instanceId integer
 
 const LIMIT_RULE_PREFIX = 'limitBy' // prefix for log table "limits" methods
@@ -21,17 +19,18 @@ let HindsightInstances
  * @class
  * @constructor
  * @param {Object} config - Hindsight configuration object, initialized instance tracking if needed.
+ * @param {Object} [config.instanceLimits] - The limits for the number of Hindsight instances.
+ * @param {Object} [config.lineLimits] - The limits to buffering log lines, by age, count and bytes.
  * @param {Object} [config.logger=console] - The logger object to be used for logging.
  * @param {Object} [config.rules] - Rule properties configuring logger instance and log line handling.
  * @param {Object} perLineFields - The object properties to always log, stringified for singleton key.
   */
 export default class Hindsight {
-  // Internal log methods
-  _trace; _dir; _debug; _info; _warn; _error
   _instanceId
-  _privateLogLevel
+  _diagnosticLogLevel // _trace through _error methods defined at end of class
   module
   adapter
+  lineLimits
   rules
   perLineFields = {}
   logTables
@@ -57,17 +56,18 @@ export default class Hindsight {
   }
 
   constructor (config = {}, perLineFields = {}) {
-    const { logger, rules } = getConfig(config)
+    const { lineLimits, logger, rules } = getConfig(config)
+
     this.module = logger
     this.adapter = new LogAdapter(this.module)
+    this._debug('Hindsight constructor called', { lineLimits, rules, perLineFields })
 
-    this._initInternalLogging()
-    this._debug('Hindsight constructor called', { config, rules, perLineFields })
+    this.lineLimits = lineLimits
+    this.perLineFields = perLineFields
+    this.rules = rules
 
     this._instanceId = instanceId++ // instance ordinal, primarily for debugging
-    this.rules = rules
-    this.perLineFields = perLineFields
-    this.logTables = new LogTableManager({ ...rules.lineLimits, maxLineCount: this.rules.lineLimits.maxSize })
+    this.logTables = new LogTableManager({ ...lineLimits, maxLineCount: this.lineLimits.maxSize })
 
     const instanceSignature = Hindsight.getInstanceIndexString(perLineFields)
     this._debug('constructor', { instanceSignature, moduleKeys: Object.keys(this.module) })
@@ -95,14 +95,16 @@ export default class Hindsight {
    * The new instance will have a child logger instance if the original logger has child functionality.
    * @returns {Hindsight} A new Hindsight instance.
    */
-  child ({ perLineFields = {}, rules = {} } = {}) {
+  child ({ lineLimits = {}, perLineFields = {}, rules = {} } = {}) {
     const { module: logger } = this
     const combinedFields = { ...this.perLineFields, ...perLineFields }
     const combinedRules = { ...this.rules, ...rules }
+    const combinedLimits = { ...this.lineLimits, ...lineLimits }
 
     const innerChild = logger.child ? logger.child(perLineFields) : logger // use child factory if available
     const childConfig = {
       instanceLimits: { maxAge: HindsightInstances.maxAge, maxSize: HindsightInstances.maxSize },
+      lineLimits: combinedLimits,
       logger: innerChild,
       rules: combinedRules
     }
@@ -112,7 +114,7 @@ export default class Hindsight {
 
   // Get and set the current module log level, this is separate from the proxied logger.
   get moduleLogLevel () {
-    return this._privateLogLevel
+    return this._diagnosticLogLevel
   }
 
   set moduleLogLevel (level) {
@@ -120,16 +122,16 @@ export default class Hindsight {
   }
 
   /**
-   * Limits the log tables based on the configured rules. The method iterates over
-   * each limit criteria defined in the rules, calling the corresponding private
-   * line limit method for each criteria with the currently configured limit rules.
+   * Limits the log tables based on the configured maximums. The method iterates over
+   * each limit criteria, calling the corresponding private line limit method for each
+   * criteria with the currently configured limit.
    */
   applyLineLimits () {
-    Object.keys(this.rules.lineLimits).forEach((criteria) => {
+    Object.keys(this.lineLimits).forEach((criteria) => {
       this._debug({ criteria })
       const lineLimitMethod = this.logTables[LIMIT_RULE_PREFIX + criteria]
       // call the private lineLimits method with the current lineLimits rule value
-      lineLimitMethod.call(this.logTables, this.rules.lineLimits[criteria])
+      lineLimitMethod.call(this.logTables, this.lineLimits[criteria])
     })
   }
 
@@ -175,18 +177,7 @@ export default class Hindsight {
    */
   _initInternalLogging () {
     const levelName = process.env.HINDSIGHT_LOG_LEVEL || 'error'
-    this._hindsightLogLevel = this.adapter.levelLookup[levelName];
-
-    // only using standard console methods for now
-    ['trace', 'debug', 'info', 'warn', 'error'].forEach((name) => {
-      this['_' + name] = (...payload) => {
-        // todo: use configured logger's methods instead of console
-        const lineLevel = this.adapter.levelLookup[name] // using subset of console methods
-        if (lineLevel >= this._privateLogLevel) {
-          console[name](...payload)
-        }
-      }
-    })
+    this._hindsightLogLevel = this.adapter.levelLookup[levelName]
   }
 
   /**
@@ -278,6 +269,30 @@ export default class Hindsight {
     }
     this.logTables.addLine(name, logEntry)
     this.applyLineLimits()
+  }
+
+  _levelCheck (level) {
+    return this.adapter.levelLookup[level] >= this._diagnosticLogLevel
+  }
+
+  _trace (...payload) {
+    this._levelCheck('trace') && console.trace(...payload)
+  }
+
+  _debug (...payload) {
+    this._levelCheck('debug') && console.debug(...payload)
+  }
+
+  _info (...payload) {
+    this._levelCheck('info') && console.info(...payload)
+  }
+
+  _warn (...payload) {
+    this._levelCheck('warn') && console.warn(...payload)
+  }
+
+  _error (...payload) {
+    this._levelCheck('error') && console.error(...payload)
   }
 }
 

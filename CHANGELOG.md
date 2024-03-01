@@ -10,4 +10,3 @@
 ### v0.2.0 Unstable development version with basic support for common loggers - 2024-02-25
 - Support for the common denominator of common logger modules
 - Limit buffered log data based on overall memory use and/or custom criteria
-
