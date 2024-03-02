@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import Hindsight from '../index.js'
-import LevelBuffers from '../log-tables.js'
+import LevelBuffers from '../level-buffers.js'
 
 describe('Hindsight applyLineLimits.Rules Tests', function () {
   let hindsight

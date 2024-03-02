@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import Hindsight from '../index.js'
 import { getConfig } from '../config.js'
-import LevelBuffers from '../log-tables.js'
+import LevelBuffers from '../level-buffers.js'
 
 describe('Hindsight Rules Tests', function () {
   const envConfig = getConfig()

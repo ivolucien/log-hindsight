@@ -1,4 +1,4 @@
-// log-tables.js
+// level-buffers.js
 import RingBuffer from 'ringbufferjs'
 import sizeof from 'object-sizeof'
 

@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import Hindsight from '../index.js'
-import LevelBuffers from '../log-tables.js'
+import LevelBuffers from '../level-buffers.js'
 
 const TimeOverride = process.env.HINDSIGHT_TEST_SPEED_MS || 1000
 const MaxStressMemoryUsage = 1024 * 1024 * 1024 // 1GB

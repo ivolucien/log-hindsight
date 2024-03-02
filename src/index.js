@@ -1,6 +1,6 @@
 import { getConfig } from './config.js'
 import LogAdapter from './adapter.js'
-import LevelBuffers from './log-tables.js'
+import LevelBuffers from './level-buffers.js'
 import QuickLRU from 'quick-lru'
 
 let instanceId = 0 // Base counter for formatted instanceID as 'id' + instanceId integer
