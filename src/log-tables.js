@@ -5,27 +5,27 @@ import sizeof from 'object-sizeof'
 let sequenceIndex
 let estimatedBytes = 0
 
-class LogTableManager {
+class LevelBuffers {
   maxLineAgeMs
   maxBytes
 
   /**
-   * Constructs a LogTableManager object, initializing the global sequence index if required.
-   * @param {Object} options - The options for the LogTables object.
+   * Constructs a LevelBuffers object, initializing the global sequence index if required.
+   * @param {Object} options - Configuration for the LevelBuffers object.
    * @param {number} options.maxLineCount - The maximum combined total line count.
    */
   constructor ({ maxLineCount, maxBytes = false }) {
-    this.logTables = {}
+    this.levels = {}
     this.maxBytes = maxBytes
     if (sequenceIndex == null) {
-      LogTableManager.initGlobalLineTracking(maxLineCount)
+      LevelBuffers.initGlobalLineTracking(maxLineCount)
     }
   }
 
   // todo? getter for maxLineCount from sequenceIndex
 
   /**
-   * Initializes the global index for log tables.
+   * Initializes the global index for buffers.
    * This function is also useful for clearing the static index during tests.
    *
    * @param {number} maxLineCount - The maximum combined total of all log lines.
@@ -35,16 +35,16 @@ class LogTableManager {
     estimatedBytes = 0
     sequenceIndex = new RingBuffer( // init singleton on first constructor call
       maxLineCount, // max total of all log lines
-      (line) => LogTableManager._deleteLineFromTable(line.context) // eviction callback for last out lines
+      (line) => LevelBuffers._deleteLineFromBuffer(line.context) // eviction callback for last out lines
     )
   }
 
-  // remove log line from the table referenced in the line's context object
-  static _deleteLineFromTable (context) {
-    const levelTable = context.table
+  // remove log line from the buffer referenced in the line's context object
+  static _deleteLineFromBuffer (context) {
+    const buffer = context.buffer
     estimatedBytes = Math.max(0, estimatedBytes - context.lineBytes) // stay >= 0
 
-    delete levelTable[context.sequence]
+    delete buffer[context.sequence]
   }
 
   static get estimatedBytes () { return estimatedBytes }
@@ -54,28 +54,28 @@ class LogTableManager {
   }
 
   /**
-   * Retrieves the log table for the specified level name. If the table does not exist, it will be created.
+   * Retrieves the buffer for the specified level name. If the buffer does not exist, it will be created.
    *
    * @param {string} levelName - The name of the log level.
-   * @returns {object} - The log table object for the specified level name.
+   * @returns {object} - The buffer object for the specified level name.
    */
   get (levelName) {
-    if (!this.logTables[levelName]) {
-      this.logTables[levelName] = { counter: 1 }
+    if (!this.levels[levelName]) {
+      this.levels[levelName] = { counter: 1 }
     }
-    return this.logTables[levelName]
+    return this.levels[levelName]
   }
 
   /**
-   * Adds a line to the specified level's table and the sequence index.
+   * Adds a line to the specified level's buffer and the sequence index.
    * @param {string} levelName - The name of the level.
    * @param {any} line - The line to be added.
    * @returns {number} - The sequence number of the added line.
    */
   addLine (levelName, line) {
-    const table = this.get(levelName)
-    line.context.table = table // Add table and sequence to context as a back-reference when deleting lines
-    line.context.sequence = table.counter++
+    const buffer = this.get(levelName)
+    line.context.buffer = buffer // Add buffer and sequence to context as a back-reference when deleting lines
+    line.context.sequence = buffer.counter++
     if (this.maxBytes > 0) {
       try {
         const contextSize = Object.keys(line.context).length * 8 // rough estimate of line overhead
@@ -89,7 +89,7 @@ class LogTableManager {
       }
     }
 
-    table[line.context.sequence] = line
+    buffer[line.context.sequence] = line
 
     // todo: figure out garbage collection for expired lines and the sequence index
     sequenceIndex.enq(line) // add to sequence index
@@ -108,18 +108,18 @@ class LogTableManager {
     // must soft delete from sequence index as it only supports deletion from the tail
     line.payload = []
     line.context.expired = true
-    LogTableManager._deleteLineFromTable(context)
+    LevelBuffers._deleteLineFromBuffer(context)
   }
 
   /**
-   * Removes previously written lines from the end of the log table, up to the last unwritten line.
-   * Lines are removed from both the sequence index and the log table.
+   * Removes previously written lines from the end of the buffer, up to the last unwritten line.
+   * Lines are removed from both the sequence index and the buffer.
    */
   limitByAlreadyWritten () {
     while (!sequenceIndex.isEmpty() && sequenceIndex.peek()?.context?.written) {
       const line = sequenceIndex.deq()
-      // and from the log table
-      LogTableManager._deleteLineFromTable(line.context)
+      // and from the buffer
+      LevelBuffers._deleteLineFromBuffer(line.context)
     }
   }
 
@@ -135,8 +135,8 @@ class LogTableManager {
     while (!sequenceIndex.isEmpty() && sequenceIndex.peek()?.context?.timestamp < expiration) {
       // remove sequence index reference
       const line = sequenceIndex.deq()
-      // and from the log table
-      LogTableManager._deleteLineFromTable(line.context)
+      // and from the buffer
+      LevelBuffers._deleteLineFromBuffer(line.context)
       // todo? support expiration callback parameter for each line removed
     }
   }
@@ -157,9 +157,9 @@ class LogTableManager {
       const line = sequenceIndex.deq()
 
       // and this also reduces the estimated byte count
-      LogTableManager._deleteLineFromTable(line.context)
+      LevelBuffers._deleteLineFromBuffer(line.context)
     }
   }
 }
 
-export default LogTableManager
+export default LevelBuffers

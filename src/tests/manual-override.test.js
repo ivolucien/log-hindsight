@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import Hindsight from '../index.js'
-import LogTableManager from '../log-tables.js'
+import LevelBuffers from '../log-tables.js'
 
 describe('Hindsight applyLineLimits.Rules Tests', function () {
   let hindsight
@@ -11,9 +11,9 @@ describe('Hindsight applyLineLimits.Rules Tests', function () {
       maxSize: 5,
       maxAge: 50 // 50 milliseconds
     }
-    LogTableManager.initGlobalLineTracking(lineLimits.maxSize) // reset static line index
+    LevelBuffers.initGlobalLineTracking(lineLimits.maxSize) // reset static line index
     hindsight = new Hindsight({ lineLimits })
-    hindsight.logTables.sequenceIndex.deqN(hindsight.logTables.sequenceIndex.size()) // Clear line index
+    hindsight.buffers.sequenceIndex.deqN(hindsight.buffers.sequenceIndex.size()) // Clear line index
   })
 
   it('should limit log lines above the specified count', function () {
@@ -23,10 +23,10 @@ describe('Hindsight applyLineLimits.Rules Tests', function () {
     }
 
     // Check if the number of log lines are limited to 5
-    const logTable = hindsight.logTables.get('debug')
-    const expectedLogTableKeys = hindsight.lineLimits.maxSize + 1 // +1 for the counter key
-    hindsight._debug({ logTable, tableKeys: Object.keys(logTable) })
-    expect(Object.keys(logTable).length).to.be.at.most(expectedLogTableKeys)
+    const buffer = hindsight.buffers.get('debug')
+    const expectedBufferKeys = hindsight.lineLimits.maxSize + 1 // +1 for the counter key
+    hindsight._debug({ buffer, bufferKeys: Object.keys(buffer) })
+    expect(Object.keys(buffer).length).to.be.at.most(expectedBufferKeys)
   })
 
   it('should remove log lines older than specified milliseconds', function (done) {
@@ -39,12 +39,12 @@ describe('Hindsight applyLineLimits.Rules Tests', function () {
     // Wait for 10ms and then apply lineLimits rules
     setTimeout(() => {
       hindsight.applyLineLimits()
-      const logTable = hindsight.logTables.get('debug', 'test')
+      const buffer = hindsight.buffers.get('debug', 'test')
 
       // Check if the old log line is removed
-      expect(logTable.counter).to.equal(3) // 2 log lines and has been incremented afterwards
-      expect(logTable[1]).to.not.exist
-      expect(logTable[2]).to.haveOwnProperty('payload').that.eqls(['New log line'])
+      expect(buffer.counter).to.equal(3) // 2 log lines and has been incremented afterwards
+      expect(buffer[1]).to.not.exist
+      expect(buffer[2]).to.haveOwnProperty('payload').that.eqls(['New log line'])
       done()
     }, 10)
   })
@@ -56,11 +56,11 @@ describe('Hindsight applyLineLimits.Rules Tests', function () {
     hindsight._logIntake({ name: 'info', sessionId: 'test' }, 'Deferred log line')
     hindsight._logIntake({ name: 'warn', sessionId: 'test' }, 'Immediate log line')
 
-    const infoTable = hindsight.logTables.get('info', 'test')
-    const warnTable = hindsight.logTables.get('warn', 'test')
+    const infoBuffer = hindsight.buffers.get('info', 'test')
+    const warnBuffer = hindsight.buffers.get('warn', 'test')
 
-    hindsight._debug({ sequenceIndexSize: hindsight.logTables.sequenceIndex.size() })
-    expect(infoTable['1']).to.exist // 'info' is below 'warn', so it should be deferred
-    expect(warnTable['1']).to.not.exist // 'warn' is at or above 'warn', so it should be written immediately
+    hindsight._debug({ sequenceIndexSize: hindsight.buffers.sequenceIndex.size() })
+    expect(infoBuffer['1']).to.exist // 'info' is below 'warn', so it should be deferred
+    expect(warnBuffer['1']).to.not.exist // 'warn' is at or above 'warn', so it should be written immediately
   })
 })

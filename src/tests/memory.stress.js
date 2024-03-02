@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import Hindsight from '../index.js'
-import LogTableManager from '../log-tables.js'
+import LevelBuffers from '../log-tables.js'
 
 const TimeOverride = process.env.HINDSIGHT_TEST_SPEED_MS || 1000
 const MaxStressMemoryUsage = 1024 * 1024 * 1024 // 1GB
@@ -36,18 +36,18 @@ describe('Line buffer volume test', function () {
 
         if (i % (5 * TimeOverride) === 0) { // log occasionally
           console.log(i + ') Estimated buffer size:',
-            printMB(LogTableManager.estimatedBytes),
+            printMB(LevelBuffers.estimatedBytes),
             ' ms elapsed:', new Date() - start
           )
         }
       };
     } catch (error) {
       console.log('Memory error occurred:', error)
-      // Optionally, log the estimated total bytes used by the log lines in the log table
+      // Optionally, log the estimated total bytes used by the log lines in the buffer
     }
 
     const heapUsed = process.memoryUsage().heapUsed
-    console.log({ heapUsed: printMB(heapUsed), lineCount: hindsight.logTables.sequenceIndex.size() })
+    console.log({ heapUsed: printMB(heapUsed), lineCount: hindsight.buffers.sequenceIndex.size() })
     expect(heapUsed).to.be.at.most(MaxStressMemoryUsage)
   })
 
@@ -82,22 +82,22 @@ describe('Line buffer volume test', function () {
         ])
 
         if (i % (50 * TimeOverride) === 0) { // log occasionally
-          const then = hindsight.logTables.sequenceIndex.peek().context.timestamp
+          const then = hindsight.buffers.sequenceIndex.peek().context.timestamp
           expect(then).to.be.at.most(new Date() - maxAgeWithSlack)
 
           console.log(i + ') Estimated buffer size:', // log occasionally
-            printMB(LogTableManager.estimatedBytes),
+            printMB(LevelBuffers.estimatedBytes),
             ' ms elapsed:', new Date() - start
           )
         };
       };
     } catch (error) {
       console.log('Error during stress test:', error)
-      // Optionally, log the estimated total bytes used by the log lines in the log table
+      // Optionally, log the estimated total bytes used by the log lines in the buffer
     }
 
     const heapUsed = process.memoryUsage().heapUsed
-    console.log({ heapUsed: printMB(heapUsed), lineCount: hindsight.logTables.sequenceIndex.size() })
+    console.log({ heapUsed: printMB(heapUsed), lineCount: hindsight.buffers.sequenceIndex.size() })
     expect(heapUsed).to.be.at.most(MaxStressMemoryUsage)
   })
 })

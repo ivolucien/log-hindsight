@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import Hindsight from '../index.js'
 import { getConfig } from '../config.js'
-import LogTableManager from '../log-tables.js'
+import LevelBuffers from '../log-tables.js'
 
 describe('Hindsight Rules Tests', function () {
   const envConfig = getConfig()
@@ -14,7 +14,7 @@ describe('Hindsight Rules Tests', function () {
   beforeEach(() => {
     const { lineLimits } = getConfig(customConfig)
     Hindsight.initSingletonTracking()
-    LogTableManager.initGlobalLineTracking(lineLimits.maxSize) // reset static line index
+    LevelBuffers.initGlobalLineTracking(lineLimits.maxSize) // reset static line index
   })
 
   it('should set the default rule for a Hindsight instance correctly', function () {
@@ -68,8 +68,8 @@ describe('Hindsight Rules Tests', function () {
     hindsight.warn('warning message should be logged.')
     hindsight.error('error message should be logged.')
 
-    // Assuming Hindsight or LogTableManager has a method to retrieve all logged messages
-    const linesRingBuffer = hindsight.logTables.sequenceIndex
+    // Assuming Hindsight or LevelBuffers has a method to retrieve all logged messages
+    const linesRingBuffer = hindsight.buffers.sequenceIndex
     const loggedMessages = linesRingBuffer.peekN(linesRingBuffer.size()).map(line => line.payload[0])
 
     expect(loggedMessages).to.have.lengthOf(2) // only those below log level are buffered
@@ -91,11 +91,11 @@ describe('Hindsight Rules Tests', function () {
     hindsight.error('error message should be logged.')
     hindsight.fatal('fatal message should be logged.')
 
-    const errorTable = hindsight.logTables.get('error')
-    expect(errorTable[0]).to.not.exist // printed, not buffered
+    const errorBuffer = hindsight.buffers.get('error')
+    expect(errorBuffer[0]).to.not.exist // printed, not buffered
 
-    const fatalTable = hindsight.logTables.get('fatal')
-    expect(fatalTable[0]).to.not.exist // printed, not buffered
+    const fatalBuffer = hindsight.buffers.get('fatal')
+    expect(fatalBuffer[0]).to.not.exist // printed, not buffered
 
     expect(printed).to.have.lengthOf(2)
     expect(printed.some(([msg]) => msg.includes('error'))).to.be.true
@@ -109,11 +109,11 @@ describe('Hindsight Rules Tests', function () {
     const customConfig = getConfig({ lineLimits })
     expect(customConfig.lineLimits.maxSize).to.equal(maxSize)
 
-    LogTableManager.initGlobalLineTracking(maxSize) // reset static line index
+    LevelBuffers.initGlobalLineTracking(maxSize) // reset static line index
 
     const hindsight = new Hindsight(customConfig)
-    expect(hindsight.logTables.sequenceIndex.size()).to.equal(0)
-    expect(hindsight.logTables.sequenceIndex.capacity()).to.equal(maxSize)
+    expect(hindsight.buffers.sequenceIndex.size()).to.equal(0)
+    expect(hindsight.buffers.sequenceIndex.capacity()).to.equal(maxSize)
 
     // Simulate logging to store lines
     hindsight.debug('First line')
@@ -122,7 +122,7 @@ describe('Hindsight Rules Tests', function () {
     hindsight.debug('Fourth line') // This should trigger limits
 
     // Assuming hindsight object has a method to get the current log lines count
-    expect(hindsight.logTables.sequenceIndex.size()).to.equal(maxSize)
+    expect(hindsight.buffers.sequenceIndex.size()).to.equal(maxSize)
   })
 
   it('should remove log lines older than lineLimits.maxAge setting', function (done) {
@@ -139,8 +139,8 @@ describe('Hindsight Rules Tests', function () {
       hindsight.applyLineLimits() // normally these are async, but we want to test immediately
 
       // Assuming hindsight object has a method to get log lines with their timestamps
-      const linesRemaining = hindsight.logTables.sequenceIndex.size()
-      const line = hindsight.logTables.sequenceIndex.peek()
+      const linesRemaining = hindsight.buffers.sequenceIndex.size()
+      const line = hindsight.buffers.sequenceIndex.peek()
       const currentTime = Date.now()
 
       // Validate that no log lines are older than the current time minus maxAge
@@ -155,8 +155,8 @@ describe('Hindsight Rules Tests', function () {
   it('should remove log lines when maxBytes limit is exceeded', function () {
     const hindsight = new Hindsight(customConfig)
 
-    expect(LogTableManager.estimatedBytes).to.equal(0)
-    expect(hindsight.logTables.maxBytes).to.equal(customConfig.lineLimits.maxBytes)
+    expect(LevelBuffers.estimatedBytes).to.equal(0)
+    expect(hindsight.buffers.maxBytes).to.equal(customConfig.lineLimits.maxBytes)
 
     // Generate log lines that collectively exceed the maxBytes limit
     for (let i = 0; i < 10; i++) {
@@ -167,10 +167,11 @@ describe('Hindsight Rules Tests', function () {
     hindsight.applyLineLimits()
 
     // Assert that the total estimated bytes of stored log lines is less than or equal to maxBytes
-    expect(LogTableManager.estimatedBytes).to.be.at.most(customConfig.lineLimits.maxBytes)
+    expect(LevelBuffers.estimatedBytes).to.be.at.most(customConfig.lineLimits.maxBytes)
 
     // Assert that some log lines have been removed to respect the maxBytes limit
-    const totalLines = Object.values(hindsight.logTables.logTables).reduce((acc, table) => acc + Object.keys(table).length - 1, 0) // -1 for each table's counter property
+    const totalLines = Object.values(hindsight.buffers.levels)
+      .reduce((acc, buffer) => acc + Object.keys(buffer).length - 1, 0) // -1 for each buffer's counter property
     expect(totalLines).to.be.lessThan(10) // Less than 10 since some lines should have been removed
   })
 })

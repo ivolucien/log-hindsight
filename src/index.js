@@ -1,18 +1,18 @@
 import { getConfig } from './config.js'
 import LogAdapter from './adapter.js'
-import LogTableManager from './log-tables.js'
+import LevelBuffers from './log-tables.js'
 import QuickLRU from 'quick-lru'
 
 let instanceId = 0 // Base counter for formatted instanceID as 'id' + instanceId integer
 
-const LIMIT_RULE_PREFIX = 'limitBy' // prefix for log table "limits" methods
+const LIMIT_RULE_PREFIX = 'limitBy' // prefix for LevelBuffer limit methods
 
 // todo: make singleton session handling optional, and add a way to remove instances
 let HindsightInstances
 
 /**
  * Hindsight is a logger wrapper that buffers log lines and supports conditional logging rules.
- * It maintains tables of log lines for each log level, and keeps per-line metadata.
+ * It maintains buffers of log lines for each log level, and keeps per-line metadata.
  * Can be used to associate a child logger for each user session, task or endpoint call,
  * configure output rules on a per logger basis and dynamically write log lines using custom logic.
  *
@@ -33,7 +33,7 @@ export default class Hindsight {
   lineLimits
   rules
   perLineFields = {}
-  logTables
+  buffers
   logMethods
 
   static initSingletonTracking (instanceLimits = getConfig().instanceLimits) {
@@ -67,7 +67,7 @@ export default class Hindsight {
     this.rules = rules
 
     this._instanceId = instanceId++ // instance ordinal, primarily for debugging
-    this.logTables = new LogTableManager({ ...lineLimits, maxLineCount: this.lineLimits.maxSize })
+    this.buffers = new LevelBuffers({ ...lineLimits, maxLineCount: this.lineLimits.maxSize })
 
     const instanceSignature = Hindsight.getInstanceIndexString(perLineFields)
     this._debug('constructor', { instanceSignature, moduleKeys: Object.keys(this.module) })
@@ -122,21 +122,21 @@ export default class Hindsight {
   }
 
   /**
-   * Limits the log tables based on the configured maximums. The method iterates over
+   * Limits the buffers based on the configured maximums. The method iterates over
    * each limit criteria, calling the corresponding private line limit method for each
    * criteria with the currently configured limit.
    */
   applyLineLimits () {
     Object.keys(this.lineLimits).forEach((criteria) => {
       this._debug({ criteria })
-      const lineLimitMethod = this.logTables[LIMIT_RULE_PREFIX + criteria]
+      const lineLimitMethod = this.buffers[LIMIT_RULE_PREFIX + criteria]
       // call the private lineLimits method with the current lineLimits rule value
-      lineLimitMethod.call(this.logTables, this.lineLimits[criteria])
+      lineLimitMethod.call(this.buffers, this.lineLimits[criteria])
     })
   }
 
   /**
-   * Iterates over log level tables not below levelCutoff and writes all lines.
+   * Iterates over log level buffers at or above levelCutoff and writes all lines.
    * Call this to write this session's history. (presumes you've stored session Id in perLineFields)
    *
    * @param {string} levelCutoff - minimum required log level to write.
@@ -149,7 +149,7 @@ export default class Hindsight {
       if (!meetsThreshold) {
         return
       }
-      const levelLines = this.logTables.get(levelName)
+      const levelLines = this.buffers.get(levelName)
       let sequenceCounter = 0
       while (sequenceCounter < levelLines.counter) {
         const line = levelLines[sequenceCounter++]
@@ -164,9 +164,9 @@ export default class Hindsight {
     linesToWrite.sort((a, b) => a.context.timestamp - b.context.timestamp)
 
     linesToWrite.forEach((line) => {
-      // todo: consider making this look async to avoid blocking the event loop for large log tables
+      // todo: consider making this look async to avoid blocking the event loop for large buffers
       this._writeLine(line.context.name, line.context, line.payload)
-      this.logTables.deleteLine(line.context)
+      this.buffers.deleteLine(line.context)
     })
   }
 
@@ -181,7 +181,7 @@ export default class Hindsight {
   }
 
   /**
-   * Sets up wrapper logging by initializing log tables and methods.
+   * Sets up wrapper logging by initializing buffers and methods.
    * This method configures the wrapper to intercept and manage log calls.
    * @private
    */
@@ -245,7 +245,7 @@ export default class Hindsight {
     }
   }
 
-  // todo: support removing the log line from the log table, for now just mark as written
+  // todo: support removing the log line from the buffer, for now just mark as written
   /**
    * Writes a log line to the original logger method if it hasn't been written before.
    *
@@ -262,12 +262,11 @@ export default class Hindsight {
   }
 
   _bufferLine (name, context, payload) {
-    // get corresponding log table
     const logEntry = {
       context: { name, ...context },
       payload
     }
-    this.logTables.addLine(name, logEntry)
+    this.buffers.addLine(name, logEntry)
     this.applyLineLimits()
   }
 
@@ -300,8 +299,8 @@ export default class Hindsight {
 // todo: add method to use rules to sanitize, keep or write log lines (logDirector?)
 
 /*
-hindsight.logTables format
-LogTableManager: {
+hindsight.buffers format
+LevelBuffers: {
   info: {
     sequence<integer>: {
       context: {

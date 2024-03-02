@@ -18,13 +18,13 @@ describe('Hindsight getter tests', function () {
     })
   })
 
-  describe('logTables.get method', function () {
-    it('should return the correct log table', function () {
+  describe('buffers.get method', function () {
+    it('should return the correct buffer', function () {
       const hindsight = new Hindsight()
       const firstId = hindsight._instanceId
-      hindsight._debug(hindsight.logTables)
+      hindsight._debug(hindsight.buffers)
       hindsight.adapter.levelNames.forEach((name) => {
-        expect(hindsight.logTables.get(name)).to.deep.eql({ counter: 1 })
+        expect(hindsight.buffers.get(name)).to.deep.eql({ counter: 1 })
       })
 
       const hindsight2 = new Hindsight()
