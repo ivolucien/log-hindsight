@@ -22,8 +22,8 @@ describe('Hindsight child tests', function () {
     })
   })
 
-  it('should create a new logger with a unique instanceId and functional log methods', function () {
-    expect(newLogger.instanceId).to.not.equal(originalHindsight.instanceId)
+  it('should create a new logger with functional log methods', function () {
+    expect(newLogger).to.not.equal(originalHindsight)
 
     newLogger.logMethods.forEach((method) => {
       expect(newLogger[method.name]).to.be.a('function')

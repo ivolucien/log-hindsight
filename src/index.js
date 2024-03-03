@@ -3,8 +3,6 @@ import LogAdapter from './adapter.js'
 import LevelBuffers from './level-buffers.js'
 import QuickLRU from 'quick-lru'
 
-let instanceId = 0 // Base counter for formatted instanceID as 'id' + instanceId integer
-
 const LIMIT_RULE_PREFIX = 'limitBy' // prefix for LevelBuffer limit methods
 
 // todo: make singleton session handling optional, and add a way to remove instances
@@ -26,7 +24,6 @@ let HindsightInstances
  * @param {Object} perLineFields - The object properties to always log, stringified for singleton key.
   */
 export default class Hindsight {
-  _instanceId
   _diagnosticLogLevel // _trace through _error methods defined at end of class
   module
   adapter
@@ -66,7 +63,6 @@ export default class Hindsight {
     this.perLineFields = perLineFields
     this.rules = rules
 
-    this._instanceId = instanceId++ // instance ordinal, primarily for debugging
     this.buffers = new LevelBuffers({ ...lineLimits, maxLineCount: this.lineLimits.maxSize })
 
     const instanceSignature = Hindsight.getInstanceIndexString(perLineFields)
@@ -76,14 +72,6 @@ export default class Hindsight {
       Hindsight.initSingletonTracking(config?.instanceLimits)
     }
     HindsightInstances.set(instanceSignature, this) // add to instances map?
-  }
-
-  /**
-   * Gets the instance ID, prefixed with 'id' to differentiate from sequence number.
-   * @returns {string} The instance ID of the Hindsight object.
-   */
-  get instanceId () {
-    return 'id' + this._instanceId
   }
 
   getOrCreateChild (perLineFields) {
