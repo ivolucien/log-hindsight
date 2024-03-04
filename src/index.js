@@ -1,3 +1,4 @@
+// src/index.js
 import { getConfig } from './config.js'
 import LogAdapter from './adapter.js'
 import LevelBuffers from './level-buffers.js'
@@ -137,24 +138,23 @@ export default class Hindsight {
       if (!meetsThreshold) {
         return
       }
-      const levelLines = this.buffers.get(levelName)
-      let sequenceCounter = 0
-      while (sequenceCounter < levelLines.counter) {
-        const line = levelLines[sequenceCounter++]
+      const buffer = this.buffers.get(levelName)
+
+      buffer.lines.forEach((line) => {
         if (line != null && line.context != null) {
           line.context.name = levelName // add name to context for writing chronologically across levels
           linesToWrite.push(line)
         }
-      }
+      })
     })
 
     // Sort lines by line.context.timestamp in ascending order
     linesToWrite.sort((a, b) => a.context.timestamp - b.context.timestamp)
 
     linesToWrite.forEach((line) => {
-      // todo: consider making this look async to avoid blocking the event loop for large buffers
+      // todo: consider making this async to avoid blocking the event loop for large buffers
       this._writeLine(line.context.name, line.context, line.payload)
-      this.buffers.deleteLine(line.context)
+      this.buffers.deleteLine(line)
     })
   }
 
@@ -242,10 +242,10 @@ export default class Hindsight {
    * @param {Array} payload - The arguments to pass to the original logger method.
    */
   _writeLine (name, context, payload) {
-    if (context.written !== true) {
+    if (context.written !== true && payload?.length > 0) {
       context.written = true
       this[name].writeCounter++
-      this.adapter[name](...payload) // pass to the logger universal adapter
+      this.adapter[name](...payload) // pass to the universal logger adapter
     }
   }
 

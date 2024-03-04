@@ -1,6 +1,7 @@
-// level-buffers.js
+// src/level-buffers.js
 import RingBuffer from 'ringbufferjs'
 import sizeof from 'object-sizeof'
+import LineBuffer from './line-buffer.js'
 
 let sequenceIndex
 let estimatedBytes = 0
@@ -44,7 +45,7 @@ class LevelBuffers {
     const buffer = context.buffer
     estimatedBytes = Math.max(0, estimatedBytes - context.lineBytes) // stay >= 0
 
-    delete buffer[context.sequence]
+    buffer.delete(context.sequence)
   }
 
   static get estimatedBytes () { return estimatedBytes }
@@ -61,7 +62,7 @@ class LevelBuffers {
    */
   get (levelName) {
     if (!this.levels[levelName]) {
-      this.levels[levelName] = { counter: 1 }
+      this.levels[levelName] = new LineBuffer()
     }
     return this.levels[levelName]
   }
@@ -75,7 +76,8 @@ class LevelBuffers {
   addLine (levelName, line) {
     const buffer = this.get(levelName)
     line.context.buffer = buffer // Add buffer and sequence to context as a back-reference when deleting lines
-    line.context.sequence = buffer.counter++
+    line.context.sequence = buffer.add(line)
+
     if (this.maxBytes > 0) {
       try {
         const contextSize = Object.keys(line.context).length * 8 // rough estimate of line overhead
@@ -89,34 +91,29 @@ class LevelBuffers {
       }
     }
 
-    buffer[line.context.sequence] = line
-
     // todo: figure out garbage collection for expired lines and the sequence index
     sequenceIndex.enq(line) // add to sequence index
     return line.context.sequence
   }
 
   /**
-   * Soft delete the referenced line, idempotently.
-   * @param {Object} context - The line's context object containing the sequence key.
+   * Mark the referenced line as deleted and clear its payload, idempotently.
+   * @param {Object} line - The line including its context object.
    */
-  deleteLine (context) {
-    const line = sequenceIndex[context.sequence]
-    if (!line) {
-      return
-    }
+  deleteLine (line) {
     // must soft delete from sequence index as it only supports deletion from the tail
-    line.payload = []
-    line.context.expired = true
+    delete line.payload
+    line.context.deleted = true
     LevelBuffers._deleteLineFromBuffer(context)
   }
 
   /**
-   * Removes previously written lines from the end of the buffer, up to the last unwritten line.
-   * Lines are removed from both the sequence index and the buffer.
+   * Removes previously handled lines from the end of the buffer, up to the last active line.
+   * Lines are removed from both the sequence index and the level's line buffer.
    */
   limitByAlreadyWritten () {
-    while (!sequenceIndex.isEmpty() && sequenceIndex.peek()?.context?.written) {
+    // todo: limit to a maximum number of lines to remove at once to avoid blocking the event loop
+    while (!sequenceIndex.isEmpty() && sequenceIndex.peek()?.context?.payload == null) {
       const line = sequenceIndex.deq()
       // and from the buffer
       LevelBuffers._deleteLineFromBuffer(line.context)
