@@ -1,21 +1,20 @@
 # log-hindsight
-log-hindsight adds retroactive and conditional logic to standard loggers, allowing you to retroactively trigger what would have been logged at more detailed log level, such as after an error, or to perform custom data filtering, log sampling or to turn on detailed logging for specific users or endpoints.
+log-hindsight adds retroactive and conditional logic to standard loggers, allowing you to retroactively trigger what would have been logged at more detailed log level, such as after an error, to perform custom data filtering, or most custom rules you might need.
 
-By the first release log-hindsight will support multiple logging modules, but at this early stage of development it only supports the console logger.
+**NOT Production Ready** At this pre-alpha stage log-hindsight supports basic functions for a few popular logger modules, but has memory use and functional issues that need to be addressed before it can be used in production. It is not yet published to npm.
 
 ## Features
-_Most of this is already working but none of it has been vetted for production use, yet._
 - **Retroactive Log History Dump**: Trigger previously buffered log entries for a given hindsight object to be written out when the calling application detects specific conditions, such as an error occurring.
 - **Session-specific Logging**: Easily create and manage log contexts for individual user sessions or operational tasks.
 - **Configurable Log Retention**: Customize how long historical logs are retained in the buffer before being discarded, based on maximum line count, memory consumptions or time since the line was buffered.
+- **Integration with Standard Logging Libraries**: Wraps around popular logging modules, currently supports bunyan, pino, winston and console.
 
 ## Planned Features
-- **Integration with Standard Logging Libraries**: Designed to wrap around popular logging modules, currently only supports the console logger.
-- **Conditional Log Sampling**: Define complex conditions under which logs should be captured or ignored, optimizing log volume and relevance.
+- **Conditional Log Sampling**: Define custom conditions under which logs should be captured or ignored, optimizing log retention volume and relevance.
 - **Dynamic Log Level Adjustment**: Change log level on the fly based on runtime conditions or external triggers.
 
 ## Installation
-Note: log-hindsight is currently in development and not yet ready for public release. Installation instructions will be provided once the module is published to npm.
+Installation instructions will be provided once the module is published to npm.
 
 ## Quickstart
 _This is a quickstart guide for the current state of development. It will be updated as the module matures._
@@ -37,7 +36,7 @@ if (errorCondition) {
 }
 ```
 
-## Example Use Cases
+## Intended Use Cases (once production ready)
 _log-hindsight allows you to log much less normally but log more details when it's valuable._
 - When an error occurs write historical log details to support investigation.
 - Keep log retention costs low, but log details for a specific user.
@@ -51,8 +50,8 @@ See [USE_CASES.md](USE_CASES.md) for more interesting use cases and implementati
 | Option            | Description                           | Default                            |
 |-------------------|---------------------------------------|------------------------------------|
 | `logger`          | Logger module used to write output    | `console`                          |
-| `instanceLimits`  | Max count and age for log instances   | `{ maxSize: 5000, maxAge: 70000 }` |
-| `lineLimits`      | Line buffer limits                    | `{ maxSize: 1,000,0000, maxAge: 70,000, maxBytes: 100 MB } }` |
+| `instanceLimits`  | Max count and age of logger objects   | `{ maxSize: 5000, maxAge: 70000 }` |
+| `lineLimits`      | Line buffer limits; count, age, bytes | `{ maxSize: 1,000,0000, maxAge: 70,000, maxBytes: 100,000,000 } }` |
 | `rules`           | Rules for writing and buffer limits   | `{ write: { level: 'info' }`       |
 | `moduleLogLevel`  | log-hindsight diagnostic log level    | `'error'`                          |
 

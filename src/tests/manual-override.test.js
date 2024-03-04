@@ -25,7 +25,7 @@ describe('Hindsight applyLineLimits.Rules Tests', function () {
     // Check if the number of log lines are limited to 5
     const buffer = hindsight.buffers.get('debug')
     const expectedBufferKeys = hindsight.lineLimits.maxSize
-    hindsight._debug({ buffer, bufferKeys: buffer.lines.keys() })
+    hindsight._debug({ bufferKeys: buffer.lines.keys() })
     expect(buffer.size).to.be.at.most(expectedBufferKeys)
   })
 
