@@ -171,7 +171,7 @@ describe('Hindsight Rules Tests', function () {
 
     // Assert that some log lines have been removed to respect the maxBytes limit
     const totalLines = Object.values(hindsight.buffers.levels)
-      .reduce((acc, buffer) => acc + Object.keys(buffer).length - 1, 0) // -1 for each buffer's counter property
+      .reduce((acc, buffer) => acc + buffer.size, 0)
     expect(totalLines).to.be.lessThan(10) // Less than 10 since some lines should have been removed
   })
 })

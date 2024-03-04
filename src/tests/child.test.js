@@ -18,7 +18,7 @@ describe('Hindsight child tests', function () {
     expect(newLogger.module).to.equal(console)
     expect(newLogger.logMethods).to.deep.equal(originalHindsight.logMethods)
     newLogger.adapter.levelNames.forEach((name) => {
-      expect(newLogger.buffers.get(name)).to.deep.equal({ counter: 1 })
+      expect(newLogger.buffers.get(name)).to.include.keys('index', 'lines')
     })
   })
 

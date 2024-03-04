@@ -14,7 +14,7 @@ describe('Hindsight logIntake Tests', function () {
   }
 
   function expectValidLogLine (logBuffer, expectedData) {
-    const logLine = logBuffer[expectedData.context.sequence]
+    const logLine = logBuffer.get(expectedData.context.sequence)
     expect(logLine.context.timestamp).to.be.a('number')
     if (expectedData.context.timestamp) {
       expect(logLine.context.timestamp).to.equal(expectedData.context.timestamp)
@@ -30,7 +30,7 @@ describe('Hindsight logIntake Tests', function () {
 
     const testBuffer = expectValidLogBuffer(hindsight, 'debug')
     expectValidLogLine(testBuffer, {
-      context: { sessionId: '123456', sequence: 1 },
+      context: { sessionId: '123456', sequence: 0 },
       payload: [{ message: 'Test log message' }]
     })
   })
@@ -45,7 +45,7 @@ describe('Hindsight logIntake Tests', function () {
 
     const testBuffer = expectValidLogBuffer(hindsight, 'trace')
     expectValidLogLine(testBuffer, {
-      context: { sessionId: '123456', sequence: 1 },
+      context: { sessionId: '123456', sequence: 0 },
       payload: [[], 'testing', { message: 'Test log message' }]
     })
   })
@@ -55,7 +55,7 @@ describe('Hindsight logIntake Tests', function () {
 
     const testBuffer = expectValidLogBuffer(hindsight, 'debug')
     expectValidLogLine(testBuffer, {
-      context: { sequence: 1 },
+      context: { sequence: 0 },
       payload: [{ message: 'Test log message' }]
     })
   })
@@ -67,7 +67,7 @@ describe('Hindsight logIntake Tests', function () {
 
     const testBuffer = expectValidLogBuffer(hindsight, 'debug')
     expectValidLogLine(testBuffer, {
-      context: { timestamp: then, sequence: 1 },
+      context: { timestamp: then, sequence: 0 },
       payload: [{ message: 'Test log message' }]
     })
   })
