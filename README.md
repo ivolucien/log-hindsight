@@ -3,15 +3,11 @@ log-hindsight adds retroactive and conditional logic to standard loggers, allowi
 
 **NOT Production Ready** At this pre-alpha stage log-hindsight supports basic functions for a few popular logger modules, but has memory use and functional issues that need to be addressed before it can be used in production. It is not yet published to npm.
 
-## Features
+## Pre-Alpha Features
 - **Retroactive Log History Dump**: Trigger previously buffered log entries for a given hindsight object to be written out when the calling application detects specific conditions, such as an error occurring.
 - **Session-specific Logging**: Easily create and manage log contexts for individual user sessions or operational tasks.
 - **Configurable Log Retention**: Customize how long historical logs are retained in the buffer before being discarded, based on maximum line count, memory consumptions or time since the line was buffered.
 - **Integration with Standard Logging Libraries**: Wraps around popular logging modules, currently supports bunyan, pino, winston and console.
-
-## Planned Features
-- **Conditional Log Sampling**: Define custom conditions under which logs should be captured or ignored, optimizing log retention volume and relevance.
-- **Dynamic Log Level Adjustment**: Change log level on the fly based on runtime conditions or external triggers.
 
 ## Installation
 Installation instructions will be provided once the module is published to npm.
