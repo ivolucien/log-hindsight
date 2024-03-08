@@ -125,33 +125,57 @@ export default class Hindsight {
   }
 
   /**
-   * Iterates over log level buffers at or above levelCutoff and writes all lines.
+   * User-defined function that is called for each buffered line to decide if it's written.
+   * This function should return `true` to write the line immediately, or `false` to keep it buffered.
+   *
+   * @callback perLineWriteDecision
+   * @param {Object} lineContext - The context object for the log line, including metadata like log level and timestamp.
+   * @param {Array} linePayload - The original arguments passed to the proxied log method.
+   * @param {Object} moduleStats - Statistics for the module, such as `estimatedBytes` and `totalLineCount`.
+   * @returns {boolean} - `true` to write the line immediately, `false` to keep it buffered.
+   */
+
+  /**
+   * Iterates over log level buffers at or above levelCutoff and writes all lines based on the decision made by the provided `writeDecision` function.
    * Call this to write this session's history. (presumes you've stored session Id in perLineFields)
    *
-   * @param {string} levelCutoff - minimum required log level to write.
-   *
+   * @param {string} levelCutoff - Filter out lines below this level before perLineWriteDecision is called.
+   * @param {function} perLineWriteDecision - A user-defined function that decides if each line is written.
    */
-  writeLines (levelCutoff) {
-    const linesToWrite = []
+  writeLines (levelCutoff = 'debug', perLineWriteDecision = (/* lineContext, linePayload, moduleStats */) => true) {
+    const linesOut = []
+    const metadata = {
+      estimatedBufferBytes: this.buffers.estimatedBytes,
+      totalLineCount: this.buffers.sequenceIndex.size()
+      // more properties assigned in loops below
+    }
     this.adapter.levelNames.forEach((levelName) => {
-      const meetsThreshold = this.adapter.levelLookup[levelName] >= levelCutoff
+      const meetsThreshold = this.adapter.levelLookup[levelName] >= this.adapter.levelLookup[levelCutoff]
       if (!meetsThreshold) {
         return
       }
       const buffer = this.buffers.get(levelName)
+      metadata.levelLinesBuffered = buffer.size
+      metadata.levelLinesWritten = buffer.writeCounter
 
       buffer.lines.forEach((line) => {
         if (line != null && line.context != null) {
-          line.context.name = levelName // add name to context for writing chronologically across levels
-          linesToWrite.push(line)
+          metadata.level = levelName
+          metadata.timestamp = line.context.timestamp
+          metadata.estimatedLineBytes = line.context.lineBytes
+
+          if (perLineWriteDecision({ metadata, lineArgs: line.payload })) {
+            line.context.name = levelName // add name to context for writing chronologically across levels
+            linesOut.push(line)
+          }
         }
       })
     })
 
     // Sort lines by line.context.timestamp in ascending order
-    linesToWrite.sort((a, b) => a.context.timestamp - b.context.timestamp)
+    linesOut.sort((a, b) => a.context.timestamp - b.context.timestamp)
 
-    linesToWrite.forEach((line) => {
+    linesOut.forEach((line) => {
       // todo: consider making this async to avoid blocking the event loop for large buffers
       this._writeLine(line.context.name, line.context, line.payload)
       this.buffers.deleteLine(line)
@@ -245,7 +269,7 @@ export default class Hindsight {
     if (context.written !== true && payload?.length > 0) {
       context.written = true
       this[name].writeCounter++
-      this.adapter[name](...payload) // pass to the universal logger adapter
+      this.adapter[name](...payload) // pass to the u niversal logger adapter
     }
   }
 
@@ -259,7 +283,7 @@ export default class Hindsight {
   }
 
   _levelCheck (level) {
-    return this.adapter.levelLookup[level] >= this._diagnosticLogLevel
+    return this.adapter.levelLookup[level] >= this.adapter.levelLookup[this._diagnosticLogLevel]
   }
 
   _trace (...payload) {

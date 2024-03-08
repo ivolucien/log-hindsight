@@ -35,7 +35,7 @@ export const LEVEL_FALLBACK = {
   fatal: ['error']
 }
 
-const requiredMethods = ['debug', 'info', 'warn', 'error'];
+const requiredMethods = ['debug', 'info', 'warn', 'error']
 
 class LogAdapter {
   logger

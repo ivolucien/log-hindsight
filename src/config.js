@@ -26,7 +26,7 @@ export function getConfig (caller = {}, env = process.env.NODE_ENV) {
     lineLimits: { ...envConfig.lineLimits, ...caller?.lineLimits },
     moduleLogLevel: caller.moduleLogLevel || envConfig.moduleLogLevel,
     rules: {
-      write: { ...envConfig.rules.write, ...caller?.rules?.write },
+      write: { ...envConfig.rules.write, ...caller?.rules?.write }
     }
   }
   return config
@@ -46,7 +46,7 @@ export const envConfigs = {
     },
     moduleLogLevel: process.env.HINDSIGHT_LOG_LEVEL || 'debug',
     rules: {
-      write: { level: 'info' },
+      write: { level: 'info' }
     }
   },
   development: {

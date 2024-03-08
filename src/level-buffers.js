@@ -104,7 +104,7 @@ class LevelBuffers {
     // must soft delete from sequence index as it only supports deletion from the tail
     delete line.payload
     line.context.deleted = true
-    LevelBuffers._deleteLineFromBuffer(context)
+    LevelBuffers._deleteLineFromBuffer(line.context)
   }
 
   /**

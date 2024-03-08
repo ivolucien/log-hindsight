@@ -3,7 +3,7 @@ import Hindsight from '../index.js'
 
 describe('Hindsight Constructor Tests', function () {
   // this function incidentally verifies that falsey caller values don't override defaults
-  function validateConstructor(logger) {
+  function validateConstructor (logger) {
     const instance = new Hindsight({ logger })
     expect(instance).to.be.instanceOf(Hindsight)
     expect(instance.module).to.equal(logger || console)
@@ -40,6 +40,7 @@ describe('Hindsight Constructor Tests', function () {
   it('should throw an error for invalid logger', function () {
     const invalidLogger = 'invalidLogger'
     expect(() => {
+      // eslint-disable-next-line no-new
       new Hindsight({ logger: invalidLogger })
     }).to.throw(Error, 'Invalid logger')
   })

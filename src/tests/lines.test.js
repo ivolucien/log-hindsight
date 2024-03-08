@@ -85,7 +85,7 @@ describe('Hindsight Rules Tests', function () {
     const printed = []
     const store = (msg) => printed.push(msg)
     const stub = { debug: store, info: store, warn: store, error: store }
-    const customConfig = { logger: stub}
+    const customConfig = { logger: stub }
     const hindsight = new Hindsight(customConfig)
 
     hindsight.error('error message should be logged.')
