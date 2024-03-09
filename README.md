@@ -5,41 +5,42 @@ log-hindsight adds retroactive and conditional logic to standard loggers, allowi
 
 ## Pre-Alpha Features
 - **Retroactive Log History Dump**: Trigger previously buffered log entries for a given hindsight object to be written out when the calling application detects specific conditions, such as an error occurring.
-- **Session-specific Logging**: Easily create and manage log contexts for individual user sessions or operational tasks.
+- **Session-specific Logging**: Easily create and manage log contexts for individual user sessions or operational tasks, works with wrapped logger's child method if available.
 - **Configurable Log Retention**: Customize how long historical logs are retained in the buffer before being discarded, based on maximum line count, memory consumptions or time since the line was buffered.
 - **Integration with Standard Logging Libraries**: Wraps around popular logging modules, currently supports bunyan, pino, winston and console.
 
 ## Installation
 Installation instructions will be provided once the module is published to npm.
 
-## Quickstart
-_This is a quickstart guide for the current state of development. It will be updated as the module matures._
+## Basic Usage
+_This is for the current state of development. It will be updated as the module matures._
 
 ```javascript
-import Hindsight from 'log-hindsight';
+import Hindsight from 'log-hindsight'
 
 // Initialize Hindsight
 // default configuration is based on NODE_ENV environment variable
-const logger = new Hindsight(); // production level: 'error', test: 'debug', test-trace: 'trace'
+const logBuffer = new Hindsight() // production level: 'error', test: 'debug', test-trace: 'trace'
 
 // Log messages
-logger.trace('Starting work...'); // Buffered for possible future write
+logBuffer.trace('Starting work...') // Buffered for possible future write
+...
 
 // ...later in your application
 if (errorCondition) {
-  logger.writeLines('debug'); // Write lines >= debug log level as context for the error
-  logger.error(new Error('Yikes!')); // Written immediately by default log level
+  logBuffer.writeIf('trace') // Write detailed log lines as context for the error
+  logBuffer.error(new Error(errorCondition)) // Written immediately by default log level
 }
 ```
 
-## Intended Use Cases (once production ready)
+## Why Use Hindsight? (once production ready)
 _log-hindsight allows you to log much less normally but log more details when it's valuable._
 - When an error occurs write historical log details to support investigation.
-- Keep log retention costs low, but log details for a specific user.
+- Keep log retention costs low, but dynamically log details for a specific user.
 - Log detailed information for a newly released endpoint.
 - Just write error log lines normally, but for every 100th user request, write at trace level.
 
-See [USE_CASES.md](USE_CASES.md) for more interesting use cases and implementation ideas.
+See [USE_CASES.md](USE_CASES.md) for more use case brainstorming and implementation ideas.
 
 ## Configuration Options
 
@@ -51,7 +52,7 @@ See [USE_CASES.md](USE_CASES.md) for more interesting use cases and implementati
 | `rules`           | Rules for writing and buffer limits   | `{ write: { level: 'info' }`       |
 | `moduleLogLevel`  | log-hindsight diagnostic log level    | `'error'`                          |
 
-Configuration defaults are merged by priority:
+Configuration defaults are merged in this order:
  - constructor parameter is top priority, if any
  - else the NODE_ENV variable if there's a match in config.js
  - otherwise the default values in config.js - which are also the production env defaults
@@ -63,30 +64,23 @@ See also: src/config.js for the full list of configuration options and their def
 To create a child logger dedicated to a specific API session or task, when you can pass the logger along:
 
 ```javascript
-const childLogger = logger.child({ perLineFields: { sessionId: 'unique-session-id' } });
+const childLogger = logger.child({ perLineFields: { sessionId: 'unique-session-id' } })
 
-childLogger.info('Session-specific log message');
+childLogger.info('Session-specific log message')
 ```
 
 ## Automated Singleton Child Logger Get or Create
-If you wish to reuse a single logger instance across separate calls of a task or API session, use the static `getOrCreateChild` method to retrieve a child logger for a known unique ID -- it will create one if it doesn't exist yet.
+If you wish to reuse a single logger instance across separate calls of a task or API session, use the static `getOrCreateChild` method to retrieve a child logger for a known unique ID -- it will create one if it doesn't exist yet (within the same node process).
 
 ```javascript
 // child logger created for the first log call for this session
-const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' });
+const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' })
 
 <later...>
 // a separate call processing that same session, gets the same child logger (if within the same process)
-const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' });
+const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' })
 ```
-
-## Intended Use Cases (no later than v1.0.0)
-
- * Retroactively output trace and/or debug log data when a task/request throws an error
- * Log a chosen % of tasks/requests at trace level
- * Options to automatically strip specified data from logged objects
- * Throttle log level when log data volume over a chosen threshold
 
 ## Contributors
 
-This project is in the early stages of development and the author welcomes your input. If you're interested in contributing to log-hindsight, please contact me to coordinate on features. At this stage, it's too early in development for submitting PRs without coordination as the interface isn't stable yet.
+This project is in the early stages of development and the author welcomes your input. If you're interested in contributing to log-hindsight, please contact me to coordinate on features. At this stage, it's too early in development for submitting PRs without coordination as the **interface isn't stable** yet.
