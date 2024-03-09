@@ -3,7 +3,7 @@ import Hindsight from '../index.js'
 import { getConfig } from '../config.js'
 import LevelBuffers from '../level-buffers.js'
 
-describe('Hindsight Rules Tests', function () {
+describe('Hindsight level buffers', function () {
   const envConfig = getConfig()
   const customConfig = {
     lineLimits: {
@@ -15,13 +15,6 @@ describe('Hindsight Rules Tests', function () {
     const { lineLimits } = getConfig(customConfig)
     Hindsight.initSingletonTracking()
     LevelBuffers.initGlobalLineTracking(lineLimits.maxSize) // reset static line index
-  })
-
-  it('should set the default rule for a Hindsight instance correctly', function () {
-    const hindsight = new Hindsight()
-    const { rules: expectedRules } = envConfig // get defaults for the current NODE_ENV
-
-    expect(hindsight.rules).to.eql(expectedRules)
   })
 
   it('should overwrite default write rule when provided', function () {
