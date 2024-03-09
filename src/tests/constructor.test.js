@@ -6,9 +6,9 @@ describe('Hindsight Constructor Tests', function () {
   function validateConstructor (logger) {
     const instance = new Hindsight({ logger })
     expect(instance).to.be.instanceOf(Hindsight)
-    expect(instance.module).to.equal(logger || console)
+    expect(instance.adapter.logger).to.equal(logger || console)
 
-    instance.logMethods.forEach((method) => {
+    instance.adapter.logMethods.forEach((method) => {
       expect(instance[method.name]).to.be.a('function')
       expect(instance.buffers.get(method.name)).to.be.an('object')
     })
@@ -17,12 +17,12 @@ describe('Hindsight Constructor Tests', function () {
 
   it('should depend on default constructor values', function () {
     const obj = validateConstructor()
-    expect(obj.module).to.equal(console)
+    expect(obj.adapter.logger).to.equal(console)
   })
 
   it('should explicitly use console when passed', function () {
     const obj = validateConstructor(console)
-    expect(obj.module).to.equal(console)
+    expect(obj.adapter.logger).to.equal(console)
   })
 
   it('should set custom logger when passed', function () {
@@ -34,7 +34,7 @@ describe('Hindsight Constructor Tests', function () {
       debug: () => {}
     }
     const obj = validateConstructor(customLogger)
-    expect(obj.module).to.equal(customLogger)
+    expect(obj.adapter.logger).to.equal(customLogger)
   })
 
   it('should throw an error for invalid logger', function () {

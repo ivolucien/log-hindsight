@@ -36,17 +36,24 @@ describe('Hindsight Rules Tests', function () {
       maxBytes: 1000,
       maxSize: 5000
     }
+    LevelBuffers.initGlobalLineTracking(lineLimits.maxSize) // reset static line index
+
     const hindsight = new Hindsight({ lineLimits })
-    expect(hindsight.lineLimits).to.eql(lineLimits)
+    expect(hindsight.buffers.lineLimits).to.eql(lineLimits)
   })
 
   it('should overwrite subset of default limits, keeping default for unspecified limits', function () {
     const lineLimits = {
       maxSize: 5000
     }
+    console.log(envConfig)
+
+    LevelBuffers.initGlobalLineTracking(lineLimits.maxSize) // reset static line index
+
     const hindsight = new Hindsight({ lineLimits })
-    expect(hindsight.lineLimits.maxAge).to.eql(envConfig.lineLimits.maxAge) // default
-    expect(hindsight.lineLimits.maxSize).to.eql(lineLimits.maxSize) // modified
+    console.log(hindsight.buffers.lineLimits)
+    expect(hindsight.buffers.lineLimits.maxAge).to.eql(envConfig.lineLimits.maxAge) // default
+    expect(hindsight.buffers.lineLimits.maxSize).to.eql(lineLimits.maxSize) // modified
 
     expect(hindsight.rules.write).to.eql(envConfig.rules.write) // default
   })
@@ -138,7 +145,6 @@ describe('Hindsight Rules Tests', function () {
       hindsight.debug('New line')
       hindsight.applyLineLimits() // normally these are async, but we want to test immediately
 
-      // Assuming hindsight object has a method to get log lines with their timestamps
       const linesRemaining = hindsight.buffers.sequenceIndex.size()
       const line = hindsight.buffers.sequenceIndex.peek()
       const currentTime = Date.now()

@@ -10,13 +10,13 @@ describe('Hindsight child tests', function () {
   })
 
   it('should default to console logger for both parent and child', function () {
-    expect(originalHindsight.module).to.equal(console)
-    expect(newLogger.module).to.equal(console)
+    expect(originalHindsight.adapter.logger).to.equal(console)
+    expect(newLogger.adapter.logger).to.equal(console)
   })
 
   it('should create a new logger with properties matching the original', function () {
-    expect(newLogger.module).to.equal(console)
-    expect(newLogger.logMethods).to.deep.equal(originalHindsight.logMethods)
+    expect(newLogger.adapter.logger).to.equal(console)
+    expect(newLogger.adapter.logMethods).to.deep.equal(originalHindsight.adapter.logMethods)
     newLogger.adapter.levelNames.forEach((name) => {
       expect(newLogger.buffers.get(name)).to.include.keys('index', 'lines')
     })
@@ -25,7 +25,7 @@ describe('Hindsight child tests', function () {
   it('should create a new logger with functional log methods', function () {
     expect(newLogger).to.not.equal(originalHindsight)
 
-    newLogger.logMethods.forEach((method) => {
+    newLogger.adapter.logMethods.forEach((method) => {
       expect(newLogger[method.name]).to.be.a('function')
       expect(newLogger.buffers.get(method.name)).to.be.an('object')
     })

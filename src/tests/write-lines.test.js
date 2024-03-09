@@ -4,7 +4,7 @@ import Hindsight from '../index.js'
 
 chai.use(chaiSpies)
 
-describe('Hindsight.writeLines() Tests', function () {
+describe('Hindsight.writeIf() Tests', function () {
   let hindsight
 
   beforeEach(() => {
@@ -19,21 +19,21 @@ describe('Hindsight.writeLines() Tests', function () {
   it('should call the user defined function (UDF) for each buffered line', () => {
     const spy = chai.spy(() => true)
     hindsight.debug('Debug message should be buffered')
-    hindsight.writeLines('debug', spy)
+    hindsight.writeIf('debug', spy)
     expect(spy).to.have.been.called.once
   })
 
   it('should not call UDF for lines below the specified level', () => {
     const spy = chai.spy(() => true)
     hindsight.trace('Trace message should not trigger UDF')
-    hindsight.writeLines('debug', spy)
+    hindsight.writeIf('debug', spy)
     expect(spy).not.to.have.been.called()
   })
 
   it('should correctly pass line metadata and args to UDF', () => {
     const spy = chai.spy(() => true)
     hindsight.debug('Info message for UDF')
-    hindsight.writeLines('debug', spy)
+    hindsight.writeIf('debug', spy)
 
     expect(spy).to.have.been.called.once
     expect(spy.__spy.calls[0][0]).to.deep.include({
@@ -45,7 +45,7 @@ describe('Hindsight.writeLines() Tests', function () {
   it('should write line when UDF returns true', () => {
     const spy = chai.spy(() => true)
     hindsight.debug('Message to write')
-    hindsight.writeLines('debug', spy)
+    hindsight.writeIf('debug', spy)
 
     expect(hindsight.debug.writeCounter).to.equal(1)
     expect(spy).to.have.been.called()
@@ -54,7 +54,7 @@ describe('Hindsight.writeLines() Tests', function () {
   it('should keep line in buffer when UDF returns false', () => {
     const spy = chai.spy(() => false)
     hindsight.debug('Message not to write')
-    hindsight.writeLines('debug', spy)
+    hindsight.writeIf('debug', spy)
 
     expect(hindsight.debug.writeCounter).to.equal(0)
     expect(spy).to.have.been.called()
@@ -64,7 +64,7 @@ describe('Hindsight.writeLines() Tests', function () {
     const spy = chai.spy(() => true)
     hindsight.debug('Debug message')
     hindsight.trace('Info message')
-    hindsight.writeLines('trace', spy)
+    hindsight.writeIf('trace', spy)
 
     expect(spy).to.have.been.called.exactly(2)
   })
@@ -73,7 +73,7 @@ describe('Hindsight.writeLines() Tests', function () {
     const spy = chai.spy(() => true)
     hindsight.debug('Debug message')
     hindsight.trace('Info message')
-    hindsight.writeLines('debug', spy)
+    hindsight.writeIf('debug', spy)
 
     // only the debug message should trigger the spy, not the debug message
     expect(spy).to.have.been.called.once
@@ -89,7 +89,7 @@ describe('Hindsight.writeLines() Tests', function () {
     const then = Date.now() - 1000
     hindsight.buffers.get('trace').lines.get(0).context.timestamp = then
     hindsight.buffers.get('debug').lines.get(0).context.timestamp = now
-    hindsight.writeLines('trace', () => true)
+    hindsight.writeIf('trace', () => true)
 
     const paramsInOrder = spyWriteLine.__spy.calls.map((call) => {
       return { name: call[0], time: call[1].timestamp, message: call[2][0][0] }
@@ -105,7 +105,7 @@ describe('Hindsight.writeLines() Tests', function () {
 
     hindsight.trace('Message 1')
     hindsight.trace('Message 2')
-    hindsight.writeLines('trace', spy)
+    hindsight.writeIf('trace', spy)
 
     const buffer = hindsight.buffers.get('trace')
     expect(buffer.size).to.equal(2)
