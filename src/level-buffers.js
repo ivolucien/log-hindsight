@@ -15,8 +15,9 @@ class LevelBuffers {
    * @param {Object} options - Configuration for the LevelBuffers object.
    * @param {number} options.maxLineCount - The maximum combined total line count.
    */
-  constructor ({ maxLineCount, maxBytes = false }) {
+  constructor ({ maxAge, maxLineCount, maxBytes = false }) {
     this.levels = {}
+    this.maxLineAgeMs = maxAge
     this.maxBytes = maxBytes
     if (sequenceIndex == null) {
       LevelBuffers.initGlobalLineTracking(maxLineCount)
@@ -52,6 +53,14 @@ class LevelBuffers {
 
   get sequenceIndex () {
     return sequenceIndex // undefined if not initialized by constructor
+  }
+
+  get lineLimits () {
+    return {
+      maxAge: this.maxLineAgeMs,
+      maxBytes: this.maxBytes,
+      maxSize: sequenceIndex.capacity()
+    }
   }
 
   /**

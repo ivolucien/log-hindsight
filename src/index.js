@@ -6,7 +6,7 @@ import QuickLRU from 'quick-lru'
 
 const LIMIT_RULE_PREFIX = 'limitBy' // prefix for LevelBuffer limit methods
 
-// todo: make singleton session handling optional, and add a way to remove instances
+// todo: track child instances per parent instance, add method for deleting instances
 let HindsightInstances
 
 /**
@@ -25,14 +25,12 @@ let HindsightInstances
  * @param {Object} perLineFields - The object properties to always log, stringified for singleton key.
   */
 export default class Hindsight {
-  _diagnosticLogLevel // _trace through _error methods defined at end of class
-  module
+  _diagnosticLogLevel // private _trace through _error methods defined at end of class
+
   adapter
-  lineLimits
-  rules
-  perLineFields = {}
   buffers
-  logMethods
+  perLineFields = {}
+  rules
 
   static initSingletonTracking (instanceLimits = getConfig().instanceLimits) {
     HindsightInstances = new QuickLRU(instanceLimits) // can use in tests to reset state
@@ -56,18 +54,16 @@ export default class Hindsight {
   constructor (config = {}, perLineFields = {}) {
     const { lineLimits, logger, rules } = getConfig(config)
 
-    this.module = logger
-    this.adapter = new LogAdapter(this.module)
+    this.adapter = new LogAdapter(logger)
     this._debug('Hindsight constructor called', { lineLimits, rules, perLineFields })
 
-    this.lineLimits = lineLimits
     this.perLineFields = perLineFields
     this.rules = rules
 
-    this.buffers = new LevelBuffers({ ...lineLimits, maxLineCount: this.lineLimits.maxSize })
+    this.buffers = new LevelBuffers({ ...lineLimits, maxLineCount: lineLimits.maxSize })
 
     const instanceSignature = Hindsight.getInstanceIndexString(perLineFields)
-    this._debug('constructor', { instanceSignature, moduleKeys: Object.keys(this.module) })
+    this._debug('constructor', { instanceSignature, moduleKeys: Object.keys(logger) })
     this._initWrapper()
     if (HindsightInstances == null) {
       Hindsight.initSingletonTracking(config?.instanceLimits)
@@ -85,10 +81,10 @@ export default class Hindsight {
    * @returns {Hindsight} A new Hindsight instance.
    */
   child ({ lineLimits = {}, perLineFields = {}, rules = {} } = {}) {
-    const { module: logger } = this
+    const { logger } = this.adapter
     const combinedFields = { ...this.perLineFields, ...perLineFields }
     const combinedRules = { ...this.rules, ...rules }
-    const combinedLimits = { ...this.lineLimits, ...lineLimits }
+    const combinedLimits = { ...this.buffers.lineLimits, ...lineLimits }
 
     const innerChild = logger.child ? logger.child(perLineFields) : logger // use child factory if available
     const childConfig = {
@@ -115,12 +111,13 @@ export default class Hindsight {
    * each limit criteria, calling the corresponding private line limit method for each
    * criteria with the currently configured limit.
    */
+  // todo: this doesn't need to be dynamic, just call the methods directly
   applyLineLimits () {
-    Object.keys(this.lineLimits).forEach((criteria) => {
+    Object.keys(this.buffers.lineLimits).forEach((criteria) => {
       this._debug({ criteria })
       const lineLimitMethod = this.buffers[LIMIT_RULE_PREFIX + criteria]
       // call the private lineLimits method with the current lineLimits rule value
-      lineLimitMethod.call(this.buffers, this.lineLimits[criteria])
+      lineLimitMethod.call(this.buffers, this.buffers.lineLimits[criteria])
     })
   }
 
@@ -142,12 +139,12 @@ export default class Hindsight {
    * @param {string} levelCutoff - Filter out lines below this level before perLineWriteDecision is called.
    * @param {function} perLineWriteDecision - A user-defined function that decides if each line is written.
    */
-  writeLines (levelCutoff = 'debug', perLineWriteDecision = (/* lineContext, linePayload, moduleStats */) => true) {
+  writeIf (levelCutoff, perLineWriteDecision = (/* metadata, lineArgs */) => true) {
     const linesOut = []
     const metadata = {
       estimatedBufferBytes: this.buffers.estimatedBytes,
       totalLineCount: this.buffers.sequenceIndex.size()
-      // more properties assigned in loops below
+      // more properties assigned per loop below
     }
     this.adapter.levelNames.forEach((levelName) => {
       const meetsThreshold = this.adapter.levelLookup[levelName] >= this.adapter.levelLookup[levelCutoff]
@@ -156,9 +153,10 @@ export default class Hindsight {
       }
       const buffer = this.buffers.get(levelName)
       metadata.levelLinesBuffered = buffer.size
-      metadata.levelLinesWritten = buffer.writeCounter
+      metadata.levelLinesWritten = this[levelName].writeCounter
 
       buffer.lines.forEach((line) => {
+        // todo: write as batched async to avoid blocking the event loop for large buffers
         if (line != null && line.context != null) {
           metadata.level = levelName
           metadata.timestamp = line.context.timestamp
@@ -198,8 +196,6 @@ export default class Hindsight {
    * @private
    */
   _initWrapper () {
-    this.logMethods = this.adapter.logMethods
-
     this.adapter.levelNames.forEach((levelName) => {
       // populate this wrapper log method
       this[levelName] = (...payload) => {
