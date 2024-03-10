@@ -55,6 +55,7 @@ export default class Hindsight {
     const { lineLimits, logger, rules } = getConfig(config)
 
     this.adapter = new LogAdapter(logger)
+    this._initInternalLogging()
     this._debug('Hindsight constructor called', { lineLimits, rules, perLineFields })
 
     this.perLineFields = perLineFields
@@ -97,13 +98,17 @@ export default class Hindsight {
     return new Hindsight(childConfig, combinedFields)
   }
 
+  levelValue (level) {
+    return this.adapter.levelLookup[level]
+  }
+
   // Get and set the current module log level, this is separate from the proxied logger.
   get moduleLogLevel () {
     return this._diagnosticLogLevel
   }
 
   set moduleLogLevel (level) {
-    this._hindsightLogLevel = this.adapter.levelLookup[level] || this.moduleLogLevel
+    this._diagnosticLogLevel = this.levelValue(level) || this.moduleLogLevel
   }
 
   /**
@@ -147,7 +152,7 @@ export default class Hindsight {
       // more properties assigned per loop below
     }
     this.adapter.levelNames.forEach((levelName) => {
-      const meetsThreshold = this.adapter.levelLookup[levelName] >= this.adapter.levelLookup[levelCutoff]
+      const meetsThreshold = this.levelValue(levelName) >= this.levelValue(levelCutoff)
       if (!meetsThreshold) {
         return
       }
@@ -187,7 +192,7 @@ export default class Hindsight {
    */
   _initInternalLogging () {
     const levelName = process.env.HINDSIGHT_LOG_LEVEL || 'error'
-    this._hindsightLogLevel = this.adapter.levelLookup[levelName]
+    this._diagnosticLogLevel = levelName
   }
 
   /**
@@ -199,7 +204,7 @@ export default class Hindsight {
     this.adapter.levelNames.forEach((levelName) => {
       // populate this wrapper log method
       this[levelName] = (...payload) => {
-        this._logIntake({ name: levelName, level: this.adapter.levelLookup[levelName] }, payload)
+        this._logIntake({ name: levelName, level: this.levelValue(levelName) }, payload)
       }
       this[levelName].writeCounter = 0 // initialize counter for this log method, for tests
     })
@@ -243,8 +248,8 @@ export default class Hindsight {
     }
 
     // todo: move to a getIntLevel() property?
-    const threshold = this.adapter.levelLookup[this.rules?.write?.level]
-    const lineLevel = this.adapter.levelLookup[context.level || name]
+    const threshold = this.levelValue(this.rules?.write?.level)
+    const lineLevel = this.levelValue(context.level || name)
     this._debug({ threshold, lineLevel })
     if (lineLevel < threshold) {
       return 'buffer'
@@ -279,7 +284,7 @@ export default class Hindsight {
   }
 
   _levelCheck (level) {
-    return this.adapter.levelLookup[level] >= this.adapter.levelLookup[this._diagnosticLogLevel]
+    return this.levelValue(level) >= this.levelValue(this._diagnosticLogLevel)
   }
 
   _trace (...payload) {
