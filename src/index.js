@@ -4,8 +4,6 @@ import LogAdapter from './adapter.js'
 import LevelBuffers from './level-buffers.js'
 import QuickLRU from 'quick-lru'
 
-const LIMIT_RULE_PREFIX = 'limitBy' // prefix for LevelBuffer limit methods
-
 // todo: track child instances per parent instance, add method for deleting instances
 let HindsightInstances
 
@@ -118,12 +116,9 @@ export default class Hindsight {
    */
   // todo: this doesn't need to be dynamic, just call the methods directly
   applyLineLimits () {
-    Object.keys(this.buffers.lineLimits).forEach((criteria) => {
-      this._debug({ criteria })
-      const lineLimitMethod = this.buffers[LIMIT_RULE_PREFIX + criteria]
-      // call the private lineLimits method with the current lineLimits rule value
-      lineLimitMethod.call(this.buffers, this.buffers.lineLimits[criteria])
-    })
+    this.buffers.limitByMaxAge()
+    this.buffers.limitByMaxBytes()
+    this.buffers.limitByMaxSize()
   }
 
   /**

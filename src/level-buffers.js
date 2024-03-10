@@ -120,6 +120,7 @@ class LevelBuffers {
    * Removes previously handled lines from the end of the buffer, up to the last active line.
    * Lines are removed from both the sequence index and the level's line buffer.
    */
+  // todo: actually call this method
   limitByAlreadyWritten () {
     // todo: limit to a maximum number of lines to remove at once to avoid blocking the event loop
     while (!sequenceIndex.isEmpty() && sequenceIndex.peek()?.context?.payload == null) {
@@ -134,7 +135,7 @@ class LevelBuffers {
    *
    * @param {number} maxLineAgeMs - The maximum age of log lines in milliseconds.
    */
-  limitBymaxAge (maxLineAgeMs) {
+  limitByMaxAge (maxLineAgeMs = this.maxLineAgeMs) {
     const expiration = Date.now() - maxLineAgeMs
 
     // todo? handle async to avoid caller code delay
@@ -150,12 +151,12 @@ class LevelBuffers {
   /**
    * Removes log lines that exceed the specified maximum line count.
    */
-  limitBymaxSize () {} // automatic for ringbufferjs, triggers an optional eviction callback on overflow
+  limitByMaxSize () {} // automatic for ringbufferjs, triggers an optional eviction callback on overflow
 
   /**
    * Removes oldest log lines that exceed the specified maximum aggregate line byte size.
    */
-  limitBymaxBytes () {
+  limitByMaxBytes () {
     // how to prioritize which lines to remove? by level? by age? by size?
     // for now just trim the oldest lines from the sequence index
     // todo? support removal strategies like least-priority-first, completed-sessions-first, etc.
