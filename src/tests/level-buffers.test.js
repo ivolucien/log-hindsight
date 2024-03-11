@@ -69,7 +69,7 @@ describe('Hindsight level buffers', function () {
     hindsight.error('error message should be logged.')
 
     // Assuming Hindsight or LevelBuffers has a method to retrieve all logged messages
-    const linesRingBuffer = hindsight.buffers.sequenceIndex
+    const linesRingBuffer = hindsight.buffers.GlobalLineRingbuffer
     const loggedMessages = linesRingBuffer.peekN(linesRingBuffer.size()).map(line => line.payload[0])
 
     expect(loggedMessages).to.have.lengthOf(2) // only those below log level are buffered
@@ -112,8 +112,8 @@ describe('Hindsight level buffers', function () {
     LevelBuffers.initGlobalLineTracking(maxSize) // reset static line index
 
     const hindsight = new Hindsight(customConfig)
-    expect(hindsight.buffers.sequenceIndex.size()).to.equal(0)
-    expect(hindsight.buffers.sequenceIndex.capacity()).to.equal(maxSize)
+    expect(hindsight.buffers.GlobalLineRingbuffer.size()).to.equal(0)
+    expect(hindsight.buffers.GlobalLineRingbuffer.capacity()).to.equal(maxSize)
 
     // Simulate logging to store lines
     hindsight.debug('First line')
@@ -122,7 +122,7 @@ describe('Hindsight level buffers', function () {
     hindsight.debug('Fourth line') // This should trigger limits
 
     // Assuming hindsight object has a method to get the current log lines count
-    expect(hindsight.buffers.sequenceIndex.size()).to.equal(maxSize)
+    expect(hindsight.buffers.GlobalLineRingbuffer.size()).to.equal(maxSize)
   })
 
   it('should remove log lines older than lineLimits.maxAge setting', function (done) {
@@ -138,8 +138,8 @@ describe('Hindsight level buffers', function () {
       hindsight.debug('New line')
       hindsight.applyLineLimits() // normally these are async, but we want to test immediately
 
-      const linesRemaining = hindsight.buffers.sequenceIndex.size()
-      const line = hindsight.buffers.sequenceIndex.peek()
+      const linesRemaining = hindsight.buffers.GlobalLineRingbuffer.size()
+      const line = hindsight.buffers.GlobalLineRingbuffer.peek()
       const currentTime = Date.now()
 
       // Validate that no log lines are older than the current time minus maxAge
@@ -154,7 +154,7 @@ describe('Hindsight level buffers', function () {
   it('should remove log lines when maxBytes limit is exceeded', function () {
     const hindsight = new Hindsight(customConfig)
 
-    expect(LevelBuffers.estimatedBytes).to.equal(0)
+    expect(LevelBuffers.TotalEstimatedLineBytes).to.equal(0)
     expect(hindsight.buffers.maxBytes).to.equal(customConfig.lineLimits.maxBytes)
 
     // Generate log lines that collectively exceed the maxBytes limit
@@ -166,7 +166,7 @@ describe('Hindsight level buffers', function () {
     hindsight.applyLineLimits()
 
     // Assert that the total estimated bytes of stored log lines is less than or equal to maxBytes
-    expect(LevelBuffers.estimatedBytes).to.be.at.most(customConfig.lineLimits.maxBytes)
+    expect(LevelBuffers.TotalEstimatedLineBytes).to.be.at.most(customConfig.lineLimits.maxBytes)
 
     // Assert that some log lines have been removed to respect the maxBytes limit
     const totalLines = Object.values(hindsight.buffers.levels)

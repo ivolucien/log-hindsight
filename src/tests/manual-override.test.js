@@ -13,7 +13,7 @@ describe('Hindsight applyLineLimits.Rules Tests', function () {
     }
     LevelBuffers.initGlobalLineTracking(lineLimits.maxSize) // reset static line index
     hindsight = new Hindsight({ lineLimits })
-    hindsight.buffers.sequenceIndex.deqN(hindsight.buffers.sequenceIndex.size()) // Clear line index
+    hindsight.buffers.GlobalLineRingbuffer.deqN(hindsight.buffers.GlobalLineRingbuffer.size()) // Clear line index
   })
 
   it('should limit log lines above the specified count', function () {
@@ -59,7 +59,7 @@ describe('Hindsight applyLineLimits.Rules Tests', function () {
     const infoBuffer = hindsight.buffers.get('info', 'test')
     const warnBuffer = hindsight.buffers.get('warn', 'test')
 
-    hindsight._debug({ sequenceIndexSize: hindsight.buffers.sequenceIndex.size() })
+    hindsight._debug({ GlobalLineRingbufferSize: hindsight.buffers.GlobalLineRingbuffer.size() })
     expect(infoBuffer.get(0)).to.exist // 'info' is below 'warn', so it should be deferred
     expect(warnBuffer.get(0)).to.not.exist // 'warn' is at or above 'warn', so it should be written immediately
   })

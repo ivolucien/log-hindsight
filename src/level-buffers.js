@@ -3,8 +3,11 @@ import RingBuffer from 'ringbufferjs'
 import sizeof from 'object-sizeof'
 import LineBuffer from './line-buffer.js'
 
-let sequenceIndex
-let estimatedBytes = 0
+// aggregate line tracking across all levels, for implementing global limits
+let GlobalLineRingbuffer
+
+// rough estimate of the total byte size of all log lines, likely to be lower than actual
+let TotalEstimatedLineBytes = 0
 
 class LevelBuffers {
   maxLineAgeMs
@@ -19,12 +22,12 @@ class LevelBuffers {
     this.levels = {}
     this.maxLineAgeMs = maxAge
     this.maxBytes = maxBytes
-    if (sequenceIndex == null) {
+    if (GlobalLineRingbuffer == null) {
       LevelBuffers.initGlobalLineTracking(maxLineCount)
     }
   }
 
-  // todo? getter for maxLineCount from sequenceIndex
+  // todo? getter for maxLineCount from GlobalLineRingbuffer
 
   /**
    * Initializes the global index for buffers.
@@ -34,8 +37,8 @@ class LevelBuffers {
    * @returns {void}
    */
   static initGlobalLineTracking (maxLineCount) {
-    estimatedBytes = 0
-    sequenceIndex = new RingBuffer( // init singleton on first constructor call
+    TotalEstimatedLineBytes = 0
+    GlobalLineRingbuffer = new RingBuffer( // init singleton on first constructor call
       maxLineCount, // max total of all log lines
       (line) => LevelBuffers._deleteLineFromBuffer(line.context) // eviction callback for last out lines
     )
@@ -44,22 +47,22 @@ class LevelBuffers {
   // remove log line from the buffer referenced in the line's context object
   static _deleteLineFromBuffer (context) {
     const buffer = context.buffer
-    estimatedBytes = Math.max(0, estimatedBytes - context.lineBytes) // stay >= 0
+    TotalEstimatedLineBytes = Math.max(0, TotalEstimatedLineBytes - context.lineBytes) // stay >= 0
 
     buffer.delete(context.sequence)
   }
 
-  static get estimatedBytes () { return estimatedBytes }
+  static get TotalEstimatedLineBytes () { return TotalEstimatedLineBytes }
 
-  get sequenceIndex () {
-    return sequenceIndex // undefined if not initialized by constructor
+  get GlobalLineRingbuffer () {
+    return GlobalLineRingbuffer // undefined if not initialized by constructor
   }
 
   get lineLimits () {
     return {
       maxAge: this.maxLineAgeMs,
       maxBytes: this.maxBytes,
-      maxSize: sequenceIndex.capacity()
+      maxSize: GlobalLineRingbuffer.capacity()
     }
   }
 
@@ -92,7 +95,7 @@ class LevelBuffers {
         const contextSize = Object.keys(line.context).length * 8 // rough estimate of line overhead
         line.context.lineBytes = sizeof(line.payload || []) + contextSize
 
-        estimatedBytes += line.context.lineBytes
+        TotalEstimatedLineBytes += line.context.lineBytes
       } catch (e) {
         console.error(e)
         // todo: if circular reference error, use more expensive recursive sizeof with "object seen" map
@@ -101,7 +104,7 @@ class LevelBuffers {
     }
 
     // todo: figure out garbage collection for expired lines and the sequence index
-    sequenceIndex.enq(line) // add to sequence index
+    GlobalLineRingbuffer.enq(line) // add to sequence index
     return line.context.sequence
   }
 
@@ -123,8 +126,8 @@ class LevelBuffers {
   // todo: actually call this method
   limitByAlreadyWritten () {
     // todo: limit to a maximum number of lines to remove at once to avoid blocking the event loop
-    while (!sequenceIndex.isEmpty() && sequenceIndex.peek()?.context?.payload == null) {
-      const line = sequenceIndex.deq()
+    while (!GlobalLineRingbuffer.isEmpty() && GlobalLineRingbuffer.peek()?.context?.payload == null) {
+      const line = GlobalLineRingbuffer.deq()
       // and from the buffer
       LevelBuffers._deleteLineFromBuffer(line.context)
     }
@@ -139,9 +142,9 @@ class LevelBuffers {
     const expiration = Date.now() - maxLineAgeMs
 
     // todo? handle async to avoid caller code delay
-    while (!sequenceIndex.isEmpty() && sequenceIndex.peek()?.context?.timestamp < expiration) {
+    while (!GlobalLineRingbuffer.isEmpty() && GlobalLineRingbuffer.peek()?.context?.timestamp < expiration) {
       // remove sequence index reference
-      const line = sequenceIndex.deq()
+      const line = GlobalLineRingbuffer.deq()
       // and from the buffer
       LevelBuffers._deleteLineFromBuffer(line.context)
       // todo? support expiration callback parameter for each line removed
@@ -160,8 +163,8 @@ class LevelBuffers {
     // how to prioritize which lines to remove? by level? by age? by size?
     // for now just trim the oldest lines from the sequence index
     // todo? support removal strategies like least-priority-first, completed-sessions-first, etc.
-    while (estimatedBytes > this.maxBytes && sequenceIndex.size() > 0) {
-      const line = sequenceIndex.deq()
+    while (TotalEstimatedLineBytes > this.maxBytes && GlobalLineRingbuffer.size() > 0) {
+      const line = GlobalLineRingbuffer.deq()
 
       // and this also reduces the estimated byte count
       LevelBuffers._deleteLineFromBuffer(line.context)

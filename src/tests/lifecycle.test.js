@@ -42,7 +42,7 @@ describe('Hindsight Instance Lifecycle Management with QuickLRU', function () {
 
     instances = Hindsight.getInstances()
     console.log({ maxSize: instances.maxSize, size: instances.size })
-    //    HindsightInstances.forEach((instance) => hindsight._debug('HindsightInstances', instance));
+
     expect(instances.has(makeKey(testPerLineFields))).to.be.true
     expect(instances.get(makeKey(testPerLineFields))).to.equal(instance1)
     expect(instances.has(makeKey(testPerLineFields2))).to.be.false // instance2 should be evicted
@@ -92,7 +92,7 @@ describe('Hindsight Instance Lifecycle Management with QuickLRU', function () {
   })
 
   afterEach(function () {
-    // Reset HindsightInstances to avoid interfering with other test files
+    // Reset GlobalHindsightInstances to avoid interfering with other test files
     Hindsight.initSingletonTracking()
   })
 })

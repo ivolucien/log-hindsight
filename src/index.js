@@ -5,7 +5,8 @@ import LevelBuffers from './level-buffers.js'
 import QuickLRU from 'quick-lru'
 
 // todo: track child instances per parent instance, add method for deleting instances
-let HindsightInstances
+// since we want logs to persist between task or API calls, track the instances to delay garbage collection
+let GlobalHindsightInstances
 
 /**
  * Hindsight is a logger wrapper that buffers log lines and supports conditional logging rules.
@@ -31,11 +32,11 @@ export default class Hindsight {
   rules
 
   static initSingletonTracking (instanceLimits = getConfig().instanceLimits) {
-    HindsightInstances = new QuickLRU(instanceLimits) // can use in tests to reset state
+    GlobalHindsightInstances = new QuickLRU(instanceLimits) // can use in tests to reset state
   }
 
   static getInstances () { // for manual instance management and test use
-    return HindsightInstances
+    return GlobalHindsightInstances
   }
 
   static getInstanceIndexString (perLineFields = {}) {
@@ -45,7 +46,7 @@ export default class Hindsight {
   static getOrCreateChild (perLineFields, parentHindsight) {
     const indexKey = Hindsight.getInstanceIndexString(perLineFields)
     parentHindsight._debug({ indexKey, perLineFields })
-    const existingInstance = HindsightInstances.get(indexKey)
+    const existingInstance = GlobalHindsightInstances.get(indexKey)
     return existingInstance || parentHindsight.child({ perLineFields })
   }
 
@@ -64,10 +65,10 @@ export default class Hindsight {
     const instanceSignature = Hindsight.getInstanceIndexString(perLineFields)
     this._debug('constructor', { instanceSignature, moduleKeys: Object.keys(logger) })
     this._initWrapper()
-    if (HindsightInstances == null) {
+    if (GlobalHindsightInstances == null) {
       Hindsight.initSingletonTracking(config?.instanceLimits)
     }
-    HindsightInstances.set(instanceSignature, this) // add to instances map?
+    GlobalHindsightInstances.set(instanceSignature, this) // add to instances map?
   }
 
   getOrCreateChild (perLineFields) {
@@ -87,7 +88,7 @@ export default class Hindsight {
 
     const innerChild = logger.child ? logger.child(perLineFields) : logger // use child factory if available
     const childConfig = {
-      instanceLimits: { maxAge: HindsightInstances.maxAge, maxSize: HindsightInstances.maxSize },
+      instanceLimits: { maxAge: GlobalHindsightInstances.maxAge, maxSize: GlobalHindsightInstances.maxSize },
       lineLimits: combinedLimits,
       logger: innerChild,
       rules: combinedRules
@@ -128,7 +129,7 @@ export default class Hindsight {
    * @callback perLineWriteDecision
    * @param {Object} lineContext - The context object for the log line, including metadata like log level and timestamp.
    * @param {Array} linePayload - The original arguments passed to the proxied log method.
-   * @param {Object} moduleStats - Statistics for the module, such as `estimatedBytes` and `totalLineCount`.
+   * @param {Object} moduleStats - Statistics for the module, such as `TotalEstimatedLineBytes` and `totalLineCount`.
    * @returns {boolean} - `true` to write the line immediately, `false` to keep it buffered.
    */
 
@@ -142,8 +143,8 @@ export default class Hindsight {
   writeIf (levelCutoff, perLineWriteDecision = (/* metadata, lineArgs */) => true) {
     const linesOut = []
     const metadata = {
-      estimatedBufferBytes: this.buffers.estimatedBytes,
-      totalLineCount: this.buffers.sequenceIndex.size()
+      estimatedBufferBytes: this.buffers.TotalEstimatedLineBytes,
+      totalLineCount: this.buffers.GlobalLineRingbuffer.size()
       // more properties assigned per loop below
     }
     this.adapter.levelNames.forEach((levelName) => {

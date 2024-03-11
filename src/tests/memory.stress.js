@@ -36,7 +36,7 @@ describe('Line buffer volume test', function () {
 
         if (i % (5 * TimeOverride) === 0) { // log occasionally
           console.log(i + ') Estimated buffer size:',
-            printMB(LevelBuffers.estimatedBytes),
+            printMB(LevelBuffers.TotalEstimatedLineBytes),
             ' ms elapsed:', new Date() - start
           )
         }
@@ -47,7 +47,7 @@ describe('Line buffer volume test', function () {
     }
 
     const heapUsed = process.memoryUsage().heapUsed
-    console.log({ heapUsed: printMB(heapUsed), lineCount: hindsight.buffers.sequenceIndex.size() })
+    console.log({ heapUsed: printMB(heapUsed), lineCount: hindsight.buffers.GlobalLineRingbuffer.size() })
     expect(heapUsed).to.be.at.most(MaxStressMemoryUsage)
   })
 
@@ -82,11 +82,11 @@ describe('Line buffer volume test', function () {
         ])
 
         if (i % (50 * TimeOverride) === 0) { // log occasionally
-          const then = hindsight.buffers.sequenceIndex.peek().context.timestamp
+          const then = hindsight.buffers.GlobalLineRingbuffer.peek().context.timestamp
           expect(then).to.be.at.most(new Date() - maxAgeWithSlack)
 
           console.log(i + ') Estimated buffer size:', // log occasionally
-            printMB(LevelBuffers.estimatedBytes),
+            printMB(LevelBuffers.TotalEstimatedLineBytes),
             ' ms elapsed:', new Date() - start
           )
         };
@@ -97,7 +97,7 @@ describe('Line buffer volume test', function () {
     }
 
     const heapUsed = process.memoryUsage().heapUsed
-    console.log({ heapUsed: printMB(heapUsed), lineCount: hindsight.buffers.sequenceIndex.size() })
+    console.log({ heapUsed: printMB(heapUsed), lineCount: hindsight.buffers.GlobalLineRingbuffer.size() })
     expect(heapUsed).to.be.at.most(MaxStressMemoryUsage)
   })
 })

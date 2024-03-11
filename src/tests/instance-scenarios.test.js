@@ -83,7 +83,7 @@ describe('Hindsight instance lifecycle scenarios', function () {
   })
 
   afterEach(function () {
-    // Reset HindsightInstances to avoid interference with other tests
+    // Reset GlobalHindsightInstances to avoid interference with other tests
     Hindsight.initSingletonTracking()
   })
 })
