@@ -9,7 +9,7 @@ import QuickLRU from 'quick-lru'
 let GlobalHindsightInstances
 
 /**
- * Hindsight is a logger wrapper that buffers log lines and supports conditional logging rules.
+ * Hindsight is a logger wrapper that buffers log lines and supports conditional logging logic.
  * It maintains buffers of log lines for each log level, and keeps per-line metadata.
  * Can be used to associate a child logger for each user session, task or endpoint call,
  * configure output rules on a per logger basis and dynamically write log lines using custom logic.
@@ -20,7 +20,7 @@ let GlobalHindsightInstances
  * @param {Object} [config.instanceLimits] - The limits for the number of Hindsight instances.
  * @param {Object} [config.lineLimits] - The limits to buffering log lines, by age, count and bytes.
  * @param {Object} [config.logger=console] - The logger object to be used for logging.
- * @param {Object} [config.rules] - Rule properties configuring logger instance and log line handling.
+ * @param {Object} [config.writeWhen] - Write vs buffer condition(s) for log line handling.
  * @param {Object} perLineFields - The object properties to always log, stringified for singleton key.
   */
 export default class Hindsight {
@@ -29,7 +29,7 @@ export default class Hindsight {
   adapter
   buffers
   perLineFields = {}
-  rules
+  writeWhen = {}
 
   static initSingletonTracking (instanceLimits = getConfig().instanceLimits) {
     GlobalHindsightInstances = new QuickLRU(instanceLimits) // can use in tests to reset state
@@ -51,14 +51,14 @@ export default class Hindsight {
   }
 
   constructor (config = {}, perLineFields = {}) {
-    const { lineLimits, logger, rules } = getConfig(config)
+    const { lineLimits, logger, writeWhen } = getConfig(config)
 
     this.adapter = new LogAdapter(logger)
     this._initInternalLogging()
-    this._debug('Hindsight constructor called', { lineLimits, rules, perLineFields })
+    this._debug('Hindsight constructor called', { lineLimits, writeWhen, perLineFields })
 
     this.perLineFields = perLineFields
-    this.rules = rules
+    this.writeWhen = writeWhen
 
     this.buffers = new LevelBuffers({ ...lineLimits, maxLineCount: lineLimits.maxSize })
 
@@ -76,14 +76,14 @@ export default class Hindsight {
   }
 
   /**
-   * Creates a Hindsight logger instance using `this` as a base, overriding perLineFields and/or rules.
+   * Creates a Hindsight logger instance using `this` as a base, overriding perLineFields and/or writeWhen.
    * The new instance will have a child logger instance if the original logger has child functionality.
    * @returns {Hindsight} A new Hindsight instance.
    */
-  child ({ lineLimits = {}, perLineFields = {}, rules = {} } = {}) {
+  child ({ lineLimits = {}, perLineFields = {}, writeWhen = {} } = {}) {
     const { logger } = this.adapter
     const combinedFields = { ...this.perLineFields, ...perLineFields }
-    const combinedRules = { ...this.rules, ...rules }
+    const combinedwriteWhen = { ...this.writeWhen, ...writeWhen }
     const combinedLimits = { ...this.buffers.lineLimits, ...lineLimits }
 
     const innerChild = logger.child ? logger.child(perLineFields) : logger // use child factory if available
@@ -91,7 +91,7 @@ export default class Hindsight {
       instanceLimits: { maxAge: GlobalHindsightInstances.maxAge, maxSize: GlobalHindsightInstances.maxSize },
       lineLimits: combinedLimits,
       logger: innerChild,
-      rules: combinedRules
+      writeWhen: combinedwriteWhen
     }
     this._debug({ childConfig, combinedFields })
     return new Hindsight(childConfig, combinedFields)
@@ -129,7 +129,7 @@ export default class Hindsight {
    * @callback perLineWriteDecision
    * @param {Object} lineContext - The context object for the log line, including metadata like log level and timestamp.
    * @param {Array} linePayload - The original arguments passed to the proxied log method.
-   * @param {Object} moduleStats - Statistics for the module, such as `TotalEstimatedLineBytes` and `totalLineCount`.
+   * @param {Object} moduleStats - Statistics for the module, such as `estimatedBytes` and `totalLineCount`.
    * @returns {boolean} - `true` to write the line immediately, `false` to keep it buffered.
    */
 
@@ -138,12 +138,12 @@ export default class Hindsight {
    * Call this to write this session's history. (presumes you've stored session Id in perLineFields)
    *
    * @param {string} levelCutoff - Filter out lines below this level before perLineWriteDecision is called.
-   * @param {function} perLineWriteDecision - A user-defined function that decides if each line is written.
+   * @param {function} writeLineNow - A user-defined function that decides if each line is written.
    */
-  writeIf (levelCutoff, perLineWriteDecision = (/* metadata, lineArgs */) => true) {
+  writeIf (levelCutoff, writeLineNow = (/* metadata, lineArgs */) => true) {
     const linesOut = []
     const metadata = {
-      estimatedBufferBytes: this.buffers.TotalEstimatedLineBytes,
+      estimatedBufferBytes: this.buffers.estimatedBytes,
       totalLineCount: this.buffers.GlobalLineRingbuffer.size()
       // more properties assigned per loop below
     }
@@ -163,7 +163,7 @@ export default class Hindsight {
           metadata.timestamp = line.context.timestamp
           metadata.estimatedLineBytes = line.context.lineBytes
 
-          if (perLineWriteDecision({ metadata, lineArgs: line.payload })) {
+          if (writeLineNow({ metadata, lineArgs: line.payload })) {
             line.context.name = levelName // add name to context for writing chronologically across levels
             linesOut.push(line)
           }
@@ -238,13 +238,13 @@ export default class Hindsight {
   }
 
   _selectAction (name, context, payload) {
-    // todo: move into rules module as this expands
+    // todo? move into write logic module as this expands
     if (payload.length === 0) {
       return 'discard' // log nothing if called with no payload
     }
 
     // todo: move to a getIntLevel() property?
-    const threshold = this.levelValue(this.rules?.write?.level)
+    const threshold = this.levelValue(this?.writeWhen?.level)
     const lineLevel = this.levelValue(context.level || name)
     this._debug({ threshold, lineLevel })
     if (lineLevel < threshold) {

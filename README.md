@@ -1,5 +1,5 @@
 # log-hindsight
-log-hindsight adds retroactive and conditional logic to standard loggers, allowing you to retroactively trigger what would have been logged at more detailed log level, such as after an error, to perform custom data filtering, or most custom rules you might need.
+log-hindsight adds retroactive and conditional logic to standard loggers, allowing you to retroactively trigger what would have been logged at more detailed log level, such as after an error, to perform custom data filtering, or most custom logic you might need.
 
 **NOT Production Ready** At this pre-alpha stage log-hindsight supports basic functions for a few popular logger modules, but has memory use and functional issues that need to be addressed before it can be used in production. It is not yet published to npm.
 
@@ -46,11 +46,11 @@ See [USE_CASES.md](USE_CASES.md) for more use case brainstorming and implementat
 
 | Option            | Description                           | Default                            |
 |-------------------|---------------------------------------|------------------------------------|
-| `logger`          | Logger module used to write output    | `console`                          |
+| `logger`          | Logger module used to write output    | `console` |
 | `instanceLimits`  | Max count and age of logger objects   | `{ maxSize: 5000, maxAge: 70000 }` |
 | `lineLimits`      | Line buffer limits; count, age, bytes | `{ maxSize: 1,000,0000, maxAge: 70,000, maxBytes: 100,000,000 } }` |
-| `rules`           | Rules for writing and buffer limits   | `{ write: { level: 'info' }`       |
-| `moduleLogLevel`  | log-hindsight diagnostic log level    | `'error'`                          |
+| `writeWhen`       | Level or function for when to write   | `{ level: 'info', writeLineNow: (metadata, lineArgs) => { /* return true to write now */ } }` |
+| `moduleLogLevel`  | log-hindsight diagnostic log level    | `'error'` |
 
 Configuration defaults are merged in this order:
  - constructor parameter is top priority, if any
@@ -61,7 +61,7 @@ See also: src/config.js for the full list of configuration options and their def
 
 ## Manual Child Logger Creation
 
-To create a child logger dedicated to a specific API session or task, when you can pass the logger along:
+To create a child logger dedicated to a specific API session or task without logger persistence in between calls:
 
 ```javascript
 const childLogger = logger.child({ perLineFields: { sessionId: 'unique-session-id' } })
@@ -69,7 +69,7 @@ const childLogger = logger.child({ perLineFields: { sessionId: 'unique-session-i
 childLogger.info('Session-specific log message')
 ```
 
-## Automated Singleton Child Logger Get or Create
+## Singleton Tracked Logger using getOrCreateChild
 If you wish to reuse a single logger instance across separate calls of a task or API session, use the static `getOrCreateChild` method to retrieve a child logger for a known unique ID -- it will create one if it doesn't exist yet (within the same node process).
 
 ```javascript

@@ -12,9 +12,7 @@ export const defaultConfig = {
   },
   logger: console,
   moduleLogLevel: process.env.HINDSIGHT_LOG_LEVEL || 'error', // log level of hindsight module itself
-  rules: {
-    write: { level: 'info' }
-  }
+  writeWhen: { level: 'info' }
 }
 
 // spell out supported properties, the || syntax prevents falsy caller override values
@@ -25,9 +23,7 @@ export function getConfig (caller = {}, env = process.env.NODE_ENV) {
     logger: caller.logger || envConfig.logger,
     lineLimits: { ...envConfig.lineLimits, ...caller?.lineLimits },
     moduleLogLevel: caller.moduleLogLevel || envConfig.moduleLogLevel,
-    rules: {
-      write: { ...envConfig.rules.write, ...caller?.rules?.write }
-    }
+    writeWhen: { ...envConfig.writeWhen, ...caller?.writeWhen }
   }
   return config
 };
@@ -45,9 +41,7 @@ export const envConfigs = {
       maxSize: 10
     },
     moduleLogLevel: process.env.HINDSIGHT_LOG_LEVEL || 'debug',
-    rules: {
-      write: { level: 'info' }
-    }
+    writeWhen: { level: 'info' }
   },
   development: {
     ...defaultConfig,
@@ -61,9 +55,7 @@ export const envConfigs = {
       maxSize: 10
     },
     moduleLogLevel: process.env.HINDSIGHT_LOG_LEVEL || 'trace',
-    rules: {
-      write: { level: 'info' }
-    }
+    writeWhen: { level: 'info' }
   },
   stress: {
     ...defaultConfig,
@@ -76,9 +68,7 @@ export const envConfigs = {
       maxBytes: 500 * 1000 * 1000, // 500 MB
       maxSize: 10 * 1000 * 1000 // 10 M lines
     },
-    rules: {
-      write: { level: 'error' }
-    }
+    writeWhen: { level: 'error' }
   },
   production: {
     ...defaultConfig
