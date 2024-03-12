@@ -22,7 +22,7 @@ describe('Environment configuration validation tests', function () {
       })
 
       it('should have all required fields', function () {
-        expect(config).to.have.all.keys('instanceLimits', 'lineLimits', 'logger', 'moduleLogLevel', 'rules')
+        expect(config).to.have.all.keys('instanceLimits', 'lineLimits', 'logger', 'moduleLogLevel', 'writeWhen')
       })
 
       it('should have a valid logger', function () {
@@ -34,12 +34,12 @@ describe('Environment configuration validation tests', function () {
         expect(config.moduleLogLevel).to.be.oneOf(EXPECTED_LOG_LEVELS)
       })
 
-      it('should have valid write level in rules', function () {
-        expect(config).to.have.nested.property('rules.write.level')
-        expect(config.rules.write.level).to.be.oneOf(EXPECTED_LOG_LEVELS)
+      it('should have valid write level', function () {
+        expect(config).to.have.nested.property('writeWhen.level')
+        expect(config.writeWhen.level).to.be.oneOf(EXPECTED_LOG_LEVELS)
       })
 
-      it('should have valid lineLimits settings in rules', function () {
+      it('should have valid lineLimits settings', function () {
         expect(config).to.have.nested.property('lineLimits.maxSize')
           .to.be.a('number').that.is.at.least(2)
           .and.is.at.most(MAX_LINE_COUNT_LIMIT)
@@ -76,8 +76,8 @@ describe('Environment configuration validation tests', function () {
 
       // Test with partial custom values
       it('should correctly merge partial custom values', function () {
-        let customConfig = getConfig({ rules: { write: { level: 'warn' } } }, env)
-        expect(customConfig.rules.write.level).to.equal('warn')
+        let customConfig = getConfig({ writeWhen: { level: 'warn' } }, env)
+        expect(customConfig.writeWhen.level).to.equal('warn')
         // other values is still the default
         expect(customConfig.lineLimits.maxSize).to.equal(config.lineLimits.maxSize)
 
@@ -87,7 +87,7 @@ describe('Environment configuration validation tests', function () {
           maxAge: config.lineLimits.maxAge,
           maxBytes: config.lineLimits.maxBytes
         })
-        expect(customConfig.rules.write.level).to.equal(config.rules.write.level)
+        expect(customConfig.writeWhen.level).to.equal(config.writeWhen.level)
       })
     })
   })

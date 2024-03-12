@@ -11,9 +11,7 @@ describe('Line buffer volume test', function () {
   it('should just buffer info level logs, test large buffer size', async function () {
     this.timeout(60 * TimeOverride)
     const config = {
-      rules: {
-        write: { level: 'error' } // set write level to error so info logs are buffered
-      }
+      writeWhen: { level: 'error' } // set write level to error so info logs are buffered
     }
 
     const hindsight = new Hindsight(config)
@@ -54,9 +52,7 @@ describe('Line buffer volume test', function () {
   it('should just buffer lots of lines and release all as they age out', async function () {
     this.timeout(60 * TimeOverride)
     const config = {
-      rules: {
-        write: { level: 'error' } // set write level to error so info logs are buffered
-      },
+      writeWhen: { level: 'error' }, // set write level to error so info logs are buffered
       lineLimits: { maxAge: 50 * TimeOverride } // some lines age out before the test ends
     }
 

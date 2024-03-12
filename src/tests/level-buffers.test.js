@@ -18,9 +18,9 @@ describe('Hindsight level buffers', function () {
   })
 
   it('should overwrite default write rule when provided', function () {
-    const customRules = { write: { level: 'error' } }
-    const hindsight = new Hindsight({ rules: customRules })
-    expect(hindsight.rules.write).to.eql(customRules.write)
+    const customConfig = { writeWhen: { level: 'error' } }
+    const hindsight = new Hindsight(customConfig)
+    expect(hindsight.writeWhen).to.eql(customConfig.writeWhen)
   })
 
   it('should overwrite default lineLimits when provided', function () {
@@ -48,7 +48,7 @@ describe('Hindsight level buffers', function () {
     expect(hindsight.buffers.lineLimits.maxAge).to.eql(envConfig.lineLimits.maxAge) // default
     expect(hindsight.buffers.lineLimits.maxSize).to.eql(lineLimits.maxSize) // modified
 
-    expect(hindsight.rules.write).to.eql(envConfig.rules.write) // default
+    expect(hindsight.writeWhen).to.eql(envConfig.writeWhen) // default
   })
 
   it('should only log messages that meet or exceed the configured log level', async function () {
@@ -57,9 +57,7 @@ describe('Hindsight level buffers', function () {
     const stub = { debug: store, info: store, warn: store, error: store }
     const customConfig = {
       logger: stub,
-      rules: {
-        write: { level: 'warn' } // Only log warnings or above
-      }
+      writeWhen: { level: 'warn' } // Only log warnings or above
     }
     const hindsight = new Hindsight(customConfig)
 

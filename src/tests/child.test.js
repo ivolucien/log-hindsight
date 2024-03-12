@@ -39,11 +39,11 @@ describe('Hindsight child tests', function () {
     expect(childLogger.perLineFields).to.deep.eql(perLineFields)
   })
 
-  it('should create a child with combined rules', function () {
-    const customRules = { write: { level: 'error' } }
-    const childLogger = originalHindsight.child({ rules: customRules })
+  it('should create a child with overriden level', function () {
+    const writeWhen = { level: 'error' }
+    const childLogger = originalHindsight.child({ writeWhen })
 
-    expect(childLogger.rules.write.level).to.equal('error')
+    expect(childLogger.writeWhen.level).to.equal('error')
   })
 
   describe('Hindsight getOrCreateChild Tests', function () {

@@ -4,15 +4,13 @@ import Hindsight from '../index.js'
 
 chai.use(chaiSpies)
 
-describe('Hindsight.writeIf() Tests', function () {
+describe('hindsight.writeIf() Tests', function () {
   let hindsight
 
   beforeEach(() => {
     hindsight = new Hindsight({
       logger: console,
-      rules: {
-        write: { level: 'info' } // the default, but explicitly set here
-      }
+      writeWhen: { level: 'info' } // the default, but explicitly set here
     })
   })
 
@@ -87,6 +85,8 @@ describe('Hindsight.writeIf() Tests', function () {
     hindsight.trace('Originally 2nd')
 
     const then = Date.now() - 1000
+    expect(hindsight.buffers.get('trace')).to.be.an('object')
+
     hindsight.buffers.get('trace').lines.get(0).context.timestamp = then
     hindsight.buffers.get('debug').lines.get(0).context.timestamp = now
     hindsight.writeIf('trace', () => true)

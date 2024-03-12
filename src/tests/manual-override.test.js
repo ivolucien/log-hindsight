@@ -2,11 +2,11 @@ import { expect } from 'chai'
 import Hindsight from '../index.js'
 import LevelBuffers from '../level-buffers.js'
 
-describe('Hindsight applyLineLimits.Rules Tests', function () {
+describe('Hindsight applyLineLimits Tests', function () {
   let hindsight
 
   beforeEach(function () {
-    // Setup Hindsight with custom limit rules for testing
+    // Setup Hindsight with custom limits for testing
     const lineLimits = {
       maxSize: 5,
       maxAge: 50 // 50 milliseconds
@@ -36,7 +36,7 @@ describe('Hindsight applyLineLimits.Rules Tests', function () {
     // Add a recent log line
     hindsight._logIntake({ name: 'debug', sessionId: 'test', timestamp: Date.now() }, 'New log line')
 
-    // Wait for 10ms and then apply lineLimits rules
+    // Wait for 10ms and then apply lineLimits
     setTimeout(() => {
       hindsight.applyLineLimits()
       const buffer = hindsight.buffers.get('debug', 'test')
@@ -50,8 +50,8 @@ describe('Hindsight applyLineLimits.Rules Tests', function () {
   })
 
   it('should correctly choose immediate or deferred write based on custom write rule', function () {
-    const customRules = { write: { level: 'warn' } } // Only warn and above are written immediately
-    const hindsight = new Hindsight({ rules: customRules })
+    const customConfig = { writeWhen: { level: 'warn' } } // Only warn and above are written immediately
+    const hindsight = new Hindsight(customConfig)
 
     hindsight._logIntake({ name: 'info', sessionId: 'test' }, 'Deferred log line')
     hindsight._logIntake({ name: 'warn', sessionId: 'test' }, 'Immediate log line')
