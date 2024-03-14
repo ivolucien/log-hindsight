@@ -4,7 +4,7 @@ import Hindsight from '../index.js'
 describe('Hindsight logIntake Tests', function () {
   function setupLogTest (metadata, ...payload) {
     const hindsight = new Hindsight({})
-    hindsight._logIntake(metadata, ...payload)
+    hindsight._logIntake(metadata, payload)
     return hindsight
   }
 

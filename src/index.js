@@ -28,6 +28,7 @@ export default class Hindsight {
   _diagnosticLogLevel // private _trace through _error methods defined at end of class
 
   adapter
+  // all log methods initialized in _initWrapper, including trace, info, error, etc.
   buffers
   perLineFields = {}
   writeWhen = {}
@@ -215,7 +216,7 @@ export default class Hindsight {
    * @param {Array} payload - The original args passed to the proxied log method.
    * @returns {void}
    */
-  _logIntake (metadata, ...payload) {
+  _logIntake (metadata, payload) {
     // pull name from metadata, set defaults for specific metadata properties
     const {
       name,
@@ -274,7 +275,6 @@ export default class Hindsight {
 
   // todo: add max_depth config option, clone to that depth and drop everything below it
   _shallowCopy (payload) {
-    console.dir(payload, { depth: 3 })
     const filtered = payload.map((arg) => {
       if (typeof arg !== 'object' || arg instanceof Error) {
         return arg
@@ -282,7 +282,6 @@ export default class Hindsight {
         return Array.isArray(arg) && arg.slice ? arg.slice() : { ...arg }
       }
     })
-    console.dir(filtered, { depth: 3 })
     return filtered
   }
 

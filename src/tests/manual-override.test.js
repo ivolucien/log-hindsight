@@ -19,7 +19,7 @@ describe('Hindsight applyLineLimits Tests', function () {
   it('should limit log lines above the specified count', function () {
     // Add log lines that fall below the immediate write level and exceed the max line count
     for (let i = 0; i < 7; i++) {
-      hindsight._logIntake({ name: 'debug', sessionId: 'test', timestamp: Date.now() }, `Log line ${i}`)
+      hindsight._logIntake({ name: 'debug', sessionId: 'test', timestamp: Date.now() }, [`Log line ${i}`])
     }
 
     // Check if the number of log lines are limited to 5
@@ -31,10 +31,10 @@ describe('Hindsight applyLineLimits Tests', function () {
 
   it('should remove log lines older than specified milliseconds', function (done) {
     // Add a log line that will be older than 50ms
-    hindsight._logIntake({ name: 'debug', sessionId: 'test', timestamp: Date.now() - 100 }, 'Old log line')
+    hindsight._logIntake({ name: 'debug', sessionId: 'test', timestamp: Date.now() - 100 }, ['Old log line'])
 
     // Add a recent log line
-    hindsight._logIntake({ name: 'debug', sessionId: 'test', timestamp: Date.now() }, 'New log line')
+    hindsight._logIntake({ name: 'debug', sessionId: 'test', timestamp: Date.now() }, ['New log line'])
 
     // Wait for 10ms and then apply lineLimits
     setTimeout(() => {
@@ -53,8 +53,8 @@ describe('Hindsight applyLineLimits Tests', function () {
     const customConfig = { writeWhen: { level: 'warn' } } // Only warn and above are written immediately
     const hindsight = new Hindsight(customConfig)
 
-    hindsight._logIntake({ name: 'info', sessionId: 'test' }, 'Deferred log line')
-    hindsight._logIntake({ name: 'warn', sessionId: 'test' }, 'Immediate log line')
+    hindsight._logIntake({ name: 'info', sessionId: 'test' }, ['Deferred log line'])
+    hindsight._logIntake({ name: 'warn', sessionId: 'test' }, ['Immediate log line'])
 
     const infoBuffer = hindsight.buffers.get('info', 'test')
     const warnBuffer = hindsight.buffers.get('warn', 'test')

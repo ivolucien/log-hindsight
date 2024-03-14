@@ -71,12 +71,12 @@ describe('Hindsight level buffers', function () {
     const loggedMessages = linesRingBuffer.peekN(linesRingBuffer.size()).map(line => line.payload[0])
 
     expect(loggedMessages).to.have.lengthOf(2) // only those below log level are buffered
-    expect(loggedMessages.some(([msg]) => msg.includes('debug'))).to.be.true
-    expect(loggedMessages.some(([msg]) => msg.includes('info'))).to.be.true
+    expect(loggedMessages.some((msg) => msg.includes('debug'))).to.be.true
+    expect(loggedMessages.some((msg) => msg.includes('info'))).to.be.true
 
     expect(printed).to.have.lengthOf(2) // only those at or above log level are printed
-    expect(printed.some(([msg]) => msg.includes('warn'))).to.be.true
-    expect(printed.some(([msg]) => msg.includes('error'))).to.be.true
+    expect(printed.some((msg) => msg.includes('warn'))).to.be.true
+    expect(printed.some((msg) => msg.includes('error'))).to.be.true
   })
 
   it('should log at error level if fatal error logged on console', async function () {
@@ -96,8 +96,9 @@ describe('Hindsight level buffers', function () {
     expect(fatalBuffer[0]).to.not.exist // printed, not buffered
 
     expect(printed).to.have.lengthOf(2)
-    expect(printed.some(([msg]) => msg.includes('error'))).to.be.true
-    expect(printed.some(([msg]) => msg.includes('fatal'))).to.be.true
+    console.dir(printed)
+    expect(printed.some((msg) => msg.includes('error'))).to.be.true
+    expect(printed.some((msg) => msg.includes('fatal'))).to.be.true
   })
 
   it('should limit the total number of log lines stored based on lineLimits.maxSize setting', function () {

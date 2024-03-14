@@ -35,7 +35,7 @@ describe('hindsight.writeIf() Tests', function () {
 
     expect(spy).to.have.been.called.once
     expect(spy.__spy.calls[0][0]).to.deep.include({
-      lineArgs: [['Info message for UDF']]
+      lineArgs: ['Info message for UDF']
     })
     expect(spy.__spy.calls[0][0].metadata).to.include.keys(['level', 'timestamp', 'estimatedLineBytes'])
   })
@@ -92,7 +92,7 @@ describe('hindsight.writeIf() Tests', function () {
     hindsight.writeIf('trace', () => true)
 
     const paramsInOrder = spyWriteLine.__spy.calls.map((call) => {
-      return { name: call[0], time: call[1].timestamp, message: call[2][0][0] }
+      return { name: call[0], time: call[1].timestamp, message: call[2][0] }
     })
     expect(paramsInOrder).to.eql([
       { name: 'trace', time: then, message: 'Originally 2nd' },
