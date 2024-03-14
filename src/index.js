@@ -20,6 +20,7 @@ let GlobalHindsightInstances
  * @param {Object} [config.instanceLimits] - The limits for the number of Hindsight instances.
  * @param {Object} [config.lineLimits] - The limits to buffering log lines, by age, count and bytes.
  * @param {Object} [config.logger=console] - The logger object to be used for logging.
+ * @param {Object} [config.filterData] - Trim and/or transform log line args, when buffered for now..
  * @param {Object} [config.writeWhen] - Write vs buffer condition(s) for log line handling.
  * @param {Object} perLineFields - The object properties to always log, stringified for singleton key.
   */
@@ -58,6 +59,7 @@ export default class Hindsight {
     this._debug('Hindsight constructor called', { lineLimits, writeWhen, perLineFields })
 
     this.perLineFields = perLineFields
+    this.filterData = config.filterData || this._shallowCopy
     this.writeWhen = writeWhen
 
     this.buffers = new LevelBuffers({ ...lineLimits, maxLineCount: lineLimits.maxSize })
@@ -270,10 +272,25 @@ export default class Hindsight {
     }
   }
 
+  // todo: add max_depth config option, clone to that depth and drop everything below it
+  _shallowCopy (payload) {
+    console.dir(payload, { depth: 3 })
+    const filtered = payload.map((arg) => {
+      if (typeof arg !== 'object' || arg instanceof Error) {
+        return arg
+      } else {
+        return Array.isArray(arg) && arg.slice ? arg.slice() : { ...arg }
+      }
+    })
+    console.dir(filtered, { depth: 3 })
+    return filtered
+  }
+
   _bufferLine (name, context, payload) {
+    const filteredArgs = this.filterData(payload)
     const logEntry = {
       context: { name, ...context },
-      payload
+      payload: filteredArgs
     }
     this.buffers.addLine(name, logEntry)
     this.applyLineLimits()

@@ -49,6 +49,7 @@ See [USE_CASES.md](USE_CASES.md) for more use case brainstorming and implementat
 | `logger`          | Logger module used to write output    | `console` |
 | `instanceLimits`  | Max count and age of logger objects   | `{ maxSize: 5000, maxAge: 70000 }` |
 | `lineLimits`      | Line buffer limits; count, age, bytes | `{ maxSize: 1,000,0000, maxAge: 70,000, maxBytes: 100,000,000 } }` |
+| `filterData`      | Function to clean or transform data   | `(arrayOfArgs) => { /* defaults to shallow copy when buffering */ }` |
 | `writeWhen`       | Level or function for when to write   | `{ level: 'info', writeLineNow: (metadata, lineArgs) => { /* return true to write now */ } }` |
 | `moduleLogLevel`  | log-hindsight diagnostic log level    | `'error'` |
 
