@@ -2,7 +2,7 @@
 import { getConfig } from './config.js'
 import LogAdapter from './adapter.js'
 import LevelBuffers from './level-buffers.js'
-import QuickLRU from 'quick-lru'
+import QuickLRU from 'quick-lru' // todo:  consider js-lru or lru-cache to externalize ttl handling
 
 // todo: track child instances per parent instance, add method for deleting instances
 // since we want logs to persist between task or API calls, track the instances to delay garbage collection
@@ -61,7 +61,11 @@ export default class Hindsight {
 
     this.perLineFields = perLineFields
     this.filterData = config.filterData || this._shallowCopy
+
     this.writeWhen = writeWhen
+    if (typeof this.writeWhen.writeLineNow === 'function') {
+      this.writeWhen.writeLineNow = this.writeWhen.writeLineNow.bind(this)
+    }
 
     this.buffers = new LevelBuffers({ ...lineLimits, maxLineCount: lineLimits.maxSize })
 
@@ -145,26 +149,17 @@ export default class Hindsight {
    */
   writeIf (levelCutoff, writeLineNow = (/* metadata, lineArgs */) => true) {
     const linesOut = []
-    const metadata = {
-      estimatedBufferBytes: this.buffers.estimatedBytes,
-      totalLineCount: this.buffers.GlobalLineRingbuffer.size()
-      // more properties assigned per loop below
-    }
     this.adapter.levelNames.forEach((levelName) => {
       const meetsThreshold = this.levelValue(levelName) >= this.levelValue(levelCutoff)
       if (!meetsThreshold) {
         return
       }
       const buffer = this.buffers.get(levelName)
-      metadata.levelLinesBuffered = buffer.size
-      metadata.levelLinesWritten = this[levelName].writeCounter
 
       buffer.lines.forEach((line) => {
         // todo: write as batched async to avoid blocking the event loop for large buffers
         if (line != null && line.context != null) {
-          metadata.level = levelName
-          metadata.timestamp = line.context.timestamp
-          metadata.estimatedLineBytes = line.context.lineBytes
+          const metadata = this._getMetadata(levelName, line.context)
 
           if (writeLineNow({ metadata, lineArgs: line.payload })) {
             line.context.name = levelName // add name to context for writing chronologically across levels
@@ -240,16 +235,34 @@ export default class Hindsight {
     }
   }
 
+  _getMetadata (levelName, context) {
+    const buffer = this.buffers.get(levelName)
+    const metadata = {
+      estimatedBufferBytes: this.buffers.estimatedBytes,
+      totalLineCount: this.buffers.GlobalLineRingbuffer.size(),
+      levelLinesBuffered: buffer.size,
+      levelLinesWritten: this[levelName].writeCounter,
+      level: levelName,
+      timestamp: context.timestamp,
+      estimatedLineBytes: context.lineBytes
+    }
+    return metadata
+  }
+
   _selectAction (name, context, payload) {
     // todo? move into write logic module as this expands
     if (payload.length === 0) {
       return 'discard' // log nothing if called with no payload
+    } else if (typeof this.writeWhen.writeLineNow === 'function') {
+      const metadata = this._getMetadata(name, context)
+      return this.writeWhen.writeLineNow({ metadata, lineArgs: payload })
     }
 
     // todo: move to a getIntLevel() property?
     const threshold = this.levelValue(this?.writeWhen?.level)
     const lineLevel = this.levelValue(context.level || name)
     this._debug({ threshold, lineLevel })
+
     if (lineLevel < threshold) {
       return 'buffer'
     } else {
