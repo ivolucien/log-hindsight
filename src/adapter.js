@@ -39,6 +39,7 @@ const requiredMethods = ['debug', 'info', 'warn', 'error']
 
 class LogAdapter {
   logger
+  lineFields
 
   static validateLogger (logger) {
     if (logger == null || typeof logger !== 'object') {
@@ -51,10 +52,30 @@ class LogAdapter {
     })
   }
 
-  constructor (logger) {
-    LogAdapter.validateLogger(logger)
+  // create logger with default line fields initialized, if possible and not yet done
+  static useOrCreateLogger (logger, perLineFields) {
+    // if the logger module is passed in, create an instance with the per line fields
+    if (typeof logger.createLogger === 'function' && typeof logger.transports === 'object') {
+      return logger.createLogger({ defaultMeta: perLineFields, level: 'silly' }) // winston
+    }
+    if (typeof logger === 'function') { // these modules are functions, instances are objects
+      if (typeof logger.createLogger === 'function') {
+        return logger.createLogger({ ...perLineFields, level: 'trace' }) // bunyan
+      }
+      if (logger.pino != null) { // convenient that the module contains a reference to itself
+        return logger({ base: perLineFields, level: 'trace' }) // pino
+      }
+    }
+    return logger // if it's already an instance, just return it
+  }
 
-    this.logger = logger
+  constructor (logger, perLineFields) {
+    this.logger = LogAdapter.useOrCreateLogger(logger, perLineFields)
+    LogAdapter.validateLogger(this.logger)
+
+    if (logger === console) {
+      this.lineFields = perLineFields
+    }
     return new Proxy(this, {
       get: (target, prop, receiver) => {
         // Use the encapsulated method to determine the correct method name or function
@@ -119,6 +140,15 @@ class LogAdapter {
    */
   get logMethods () {
     return this.levelNames.map(name => ({ name, level: this.levelLookup[name] }))
+  }
+
+  get perLineFields () {
+    // try winston, bunyan and pino's methods of accessing the per line fields
+    return this.logger?.defaultMeta ??
+      this.logger?.fields ??
+      this.logger?.bindings?.() ??
+      this.lineFields ??
+      undefined
   }
 }
 

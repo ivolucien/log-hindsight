@@ -19,8 +19,8 @@ _This is for the current state of development. It will be updated as the module 
 import Hindsight from 'log-hindsight'
 
 // Initialize Hindsight
-// default configuration is based on NODE_ENV environment variable
-const logBuffer = new Hindsight() // production level: 'error', test: 'debug', test-trace: 'trace'
+// default configuration is keyed off of NODE_ENV environment variable, see config.js
+const logBuffer = new Hindsight() // production level: 'error', test: 'debug', test-dev: 'trace'
 
 // Log messages
 logBuffer.trace('Starting work...') // Buffered for possible future write
@@ -28,6 +28,9 @@ logBuffer.trace('Starting work...') // Buffered for possible future write
 
 // ...later in your application
 if (errorCondition) {
+  // Manually trigger a log dump after an error,
+  // Automated by setting writeWhen.writeLineNow option to an onError function, example in condoitions.js
+
   logBuffer.writeIf('trace') // Write detailed log lines as context for the error
   logBuffer.error(new Error(errorCondition)) // Written immediately by default log level
 }
@@ -46,15 +49,17 @@ See [USE_CASES.md](USE_CASES.md) for more use case brainstorming and implementat
 
 | Option            | Description                           | Default                            |
 |-------------------|---------------------------------------|------------------------------------|
-| `logger`          | Logger module used to write output    | `console` |
-| `instanceLimits`  | Max count and age of logger objects   | `{ maxSize: 5000, maxAge: 70000 }` |
-| `lineLimits`      | Line buffer limits; count, age, bytes | `{ maxSize: 1,000,0000, maxAge: 70,000, maxBytes: 100,000,000 } }` |
-| `filterData`      | Function to clean or transform data   | `(arrayOfArgs) => { /* defaults to shallow copy when buffering */ }` |
-| `writeWhen`       | Level or function for when to write   | `{ level: 'info', writeLineNow: (metadata, lineArgs) => { /* return true to write now */ } }` |
-| `moduleLogLevel`  | log-hindsight diagnostic log level    | `'error'` |
+| `logger`          | Logger module used to write output    | <pre>`console`</pre> |
+| `instanceLimits`  | Max count and age of logger objects   | <pre>`{ maxSize: 5000, maxAge: 70000 }`</pre> |
+| `lineLimits`      | Line buffer limits; count, age, bytes | <pre>`{`<br>`  maxSize: 1,000,0000,`<br>`  maxAge: 70,000,`<br>`  maxBytes: 100,000,000`<br>`}`</pre> |
+| `filterData`      | Function to clean or transform data   | <pre>`(arrayOfArgs) => {`<br>`  /* defaults to shallow copy when buffering */`<br>`}` |
+| `writeWhen`       | Options for how to handle log lines   | <pre>`{`<br>  `level: 'error',`<br>  `writeLineNow: <see below>`<br>`}`</pre> |
+| `writeWhen.level` | Level cutoff to consider writing now  | <pre>`'error'`</pre> |
+| `writeWhen.writeLineNow` | Determines what to do with log lines | <pre>`(metadata, lineArgs) => true`</pre> |
+| `moduleLogLevel`  | log-hindsight diagnostic log level    | <pre>`'error'`</pre> |
 
 Configuration defaults are merged in this order:
- - constructor parameter is top priority, if any
+ - constructor parameter is top priority, if provided
  - else the NODE_ENV variable if there's a match in config.js
  - otherwise the default values in config.js - which are also the production env defaults
 
@@ -70,7 +75,7 @@ const childLogger = logger.child({ perLineFields: { sessionId: 'unique-session-i
 childLogger.info('Session-specific log message')
 ```
 
-## Singleton Tracked Logger using getOrCreateChild
+## Singleton Tracked Loggers
 If you wish to reuse a single logger instance across separate calls of a task or API session, use the static `getOrCreateChild` method to retrieve a child logger for a known unique ID -- it will create one if it doesn't exist yet (within the same node process).
 
 ```javascript

@@ -55,7 +55,7 @@ export default class Hindsight {
   constructor (config = {}, perLineFields = {}) {
     const { lineLimits, logger, writeWhen } = getConfig(config)
 
-    this.adapter = new LogAdapter(logger)
+    this.adapter = new LogAdapter(logger, perLineFields)
     this._initInternalLogging()
     this._debug('Hindsight constructor called', { lineLimits, writeWhen, perLineFields })
 
@@ -83,8 +83,8 @@ export default class Hindsight {
   }
 
   /**
-   * Creates a Hindsight logger instance using `this` as a base, overriding perLineFields and/or writeWhen.
-   * The new instance will have a child logger instance if the original logger has child functionality.
+   * Creates a Hindsight logger instance using `this` as a base, overriding parent config with the child's.
+   * The new instance will have a child base logger if the original logger has child functionality.
    * @returns {Hindsight} A new Hindsight instance.
    */
   child ({ lineLimits = {}, perLineFields = {}, writeWhen = {} } = {}) {
@@ -100,7 +100,7 @@ export default class Hindsight {
       logger: innerChild,
       writeWhen: combinedwriteWhen
     }
-    this._debug({ childConfig, combinedFields })
+    console.log({ childConfig, combinedFields })
     return new Hindsight(childConfig, combinedFields)
   }
 
@@ -251,6 +251,7 @@ export default class Hindsight {
 
   _selectAction (name, context, payload) {
     // todo? move into write logic module as this expands
+    this._trace({ name, context, lineArgCount: payload.length })
     if (payload.length === 0) {
       return 'discard' // log nothing if called with no payload
     } else if (typeof this.writeWhen.writeLineNow === 'function') {
@@ -282,8 +283,17 @@ export default class Hindsight {
     if (context.written !== true && payload?.length > 0) {
       context.written = true
       this[name].writeCounter++
-      this.adapter[name](...payload) // pass to the u niversal logger adapter
+
+      const payloadWithFields = this._addPerLineFields(payload)
+      this.adapter[name](...payloadWithFields) // todo: use native logger method to include perLineFields
     }
+  }
+
+  _addPerLineFields (payload) {
+    if (this.adapter.lineFields == null) {
+      return payload // the base module has the per line fields
+    }
+    return [...payload, this.adapter.lineFields]
   }
 
   // todo: add max_depth config option, clone to that depth and drop everything below it
