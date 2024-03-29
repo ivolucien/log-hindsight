@@ -26,9 +26,10 @@ describe('Hindsight perLineFields handling tests', function () {
     expect(logLine.payload).to.deep.include.members(expectedData.payload)
 
     if (expectedPerLineFields) {
-      // per line fields are kept in the instance, they aren't copied to the line payload unless written
       const decoratedPayload = hindsight._addPerLineFields(logLine.payload) // what would be written
-      expect(decoratedPayload).to.include(expectedPerLineFields)
+      // per line fields are kept in the instance, they aren't copied to the line payload unless written
+      hindsight._debug(expectedPerLineFields, 'actual:', decoratedPayload)
+      expect(decoratedPayload).to.deep.include(expectedPerLineFields)
       expect(decoratedPayload).to.include(hindsight.perLineFields)
     }
   }
@@ -123,6 +124,35 @@ describe('Hindsight perLineFields handling tests', function () {
 
     it('should pass through the perLineFields to pino instance', function () {
       hindsight = new Hindsight({ logger: pino, writeWhen: { level: 'info' } }, perLineFields)
+
+      expect(hindsight.adapter.perLineFields).to.eql(perLineFields)
+    })
+  })
+
+  describe('when passed logger instance and separate fields property', function () {
+    const perLineFields = { userId: 'user123', sessionId: 'session456', name: 'moduleTest' }
+
+    // leaving out test for console since it has no concept of instances
+
+    it('should pass through the perLineFields to winston instance', function () {
+      const logger = winston.createLogger({ defaultMeta: perLineFields })
+      hindsight = new Hindsight({ logger, writeWhen: { level: 'info' } }, perLineFields)
+
+      expect(hindsight.adapter.perLineFields).to.equal(perLineFields)
+    })
+
+    it('should pass through the perLineFields to bunyan instance', function () {
+      const logger = bunyan(perLineFields)
+      const { name, ...sansName } = perLineFields
+      hindsight = new Hindsight({ logger, writeWhen: { level: 'info' } }, sansName)
+
+      expect(hindsight.adapter.perLineFields).to.include(perLineFields)
+    })
+
+    it('should pass through the perLineFields to pino instance', function () {
+      const logger = pino()
+      hindsight = new Hindsight({ logger, writeWhen: { level: 'info' } }, perLineFields)
+      console.log({ winston: winston.levels, pino: logger.pino, bunyan: bunyan.levels, console: console.lablels })
 
       expect(hindsight.adapter.perLineFields).to.eql(perLineFields)
     })
