@@ -100,7 +100,6 @@ export default class Hindsight {
       logger: innerChild,
       writeWhen: combinedwriteWhen
     }
-    console.log({ childConfig, combinedFields })
     return new Hindsight(childConfig, combinedFields)
   }
 

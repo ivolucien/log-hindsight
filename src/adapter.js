@@ -53,7 +53,8 @@ class LogAdapter {
   }
 
   // create logger with default line fields initialized, if possible and not yet done
-  static useOrCreateLogger (logger, perLineFields) {
+  // note that this.logger is set to its most verbose level, if we call a log method we want its output
+  static useOrCreateLogger (logger, perLineFields = {}) {
     // if the logger module is passed in, create an instance with the per line fields
     if (typeof logger.createLogger === 'function' && typeof logger.transports === 'object') {
       return logger.createLogger({ defaultMeta: perLineFields, level: 'silly' }) // winston
@@ -62,9 +63,17 @@ class LogAdapter {
       if (typeof logger.createLogger === 'function') {
         return logger.createLogger({ ...perLineFields, level: 'trace' }) // bunyan
       }
-      if (logger.pino != null) { // convenient that the module contains a reference to itself
-        return logger({ base: perLineFields, level: 'trace' }) // pino
+    }
+    if (logger.levels != null) { // only pino has .labels
+      if (logger.pino != null) {
+        if (Object.keys(perLineFields).length === 0) {
+          return logger({ level: 'trace' }) // just a parent logger if no per line fields
+        }
+
+        return logger({ level: 'trace' }).child(perLineFields) // no way to set per line fields on the root logger
       }
+
+      return logger.child(perLineFields, { level: 'trace' }) // override the parent instance's level
     }
     return logger // if it's already an instance, just return it
   }
