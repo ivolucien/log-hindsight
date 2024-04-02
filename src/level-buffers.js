@@ -2,6 +2,8 @@
 import RingBuffer from 'ringbufferjs'
 import sizeof from 'object-sizeof'
 import LineBuffer from './line-buffer.js'
+import getScopedLoggers from './internal-loggers.js'
+const { trace } = getScopedLoggers('level-buffers')
 
 // aggregate line tracking across all levels, for implementing global limits
 let GlobalLineRingbuffer
@@ -19,6 +21,7 @@ class LevelBuffers {
    * @param {number} options.maxLineCount - The maximum combined total line count.
    */
   constructor ({ maxAge, maxLineCount, maxBytes = false }) {
+    trace('LevelBuffers constructor called')
     this.levels = {}
     this.maxLineAgeMs = maxAge
     this.maxBytes = maxBytes
@@ -26,8 +29,6 @@ class LevelBuffers {
       LevelBuffers.initGlobalLineTracking(maxLineCount)
     }
   }
-
-  // todo? getter for maxLineCount from GlobalLineRingbuffer
 
   /**
    * Initializes the global index for buffers.
@@ -37,6 +38,7 @@ class LevelBuffers {
    * @returns {void}
    */
   static initGlobalLineTracking (maxLineCount) {
+    trace('initGlobalLineTracking called')
     TotalEstimatedLineBytes = 0
     GlobalLineRingbuffer = new RingBuffer( // init singleton on first constructor call
       maxLineCount, // max total of all log lines
@@ -46,6 +48,7 @@ class LevelBuffers {
 
   // remove log line from the buffer referenced in the line's context object
   static _deleteLineFromBuffer (context) {
+    trace('_deleteLineFromBuffer called')
     const buffer = context.buffer
     TotalEstimatedLineBytes = Math.max(0, TotalEstimatedLineBytes - context.lineBytes) // stay >= 0
 
@@ -86,6 +89,8 @@ class LevelBuffers {
    * @returns {number} - The sequence number of the added line.
    */
   addLine (levelName, line) {
+    trace('addLine called')
+
     const buffer = this.get(levelName)
     line.context.buffer = buffer // Add buffer and sequence to context as a back-reference when deleting lines
     line.context.sequence = buffer.add(line)
@@ -125,6 +130,7 @@ class LevelBuffers {
    */
   // todo: actually call this method
   limitByAlreadyWritten () {
+    trace('limitByAlreadyWritten called')
     // todo: limit to a maximum number of lines to remove at once to avoid blocking the event loop
     while (!GlobalLineRingbuffer.isEmpty() && GlobalLineRingbuffer.peek()?.context?.payload == null) {
       const line = GlobalLineRingbuffer.deq()
@@ -139,6 +145,7 @@ class LevelBuffers {
    * @param {number} maxLineAgeMs - The maximum age of log lines in milliseconds.
    */
   limitByMaxAge (maxLineAgeMs = this.maxLineAgeMs) {
+    trace('limitByMaxAge called')
     const expiration = Date.now() - maxLineAgeMs
 
     // todo? handle async to avoid caller code delay
@@ -160,6 +167,8 @@ class LevelBuffers {
    * Removes oldest log lines that exceed the specified maximum aggregate line byte size.
    */
   limitByMaxBytes () {
+    trace('limitByMaxBytes called')
+
     // how to prioritize which lines to remove? by level? by age? by size?
     // for now just trim the oldest lines from the sequence index
     // todo? support removal strategies like least-priority-first, completed-sessions-first, etc.

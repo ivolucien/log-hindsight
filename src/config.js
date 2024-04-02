@@ -1,4 +1,10 @@
 // config.js
+/**
+ * Default configuration properties for each supported NODE_ENV value
+ *
+ * These can be overridden via the Hindsight constructor parameters
+ *
+ */
 
 export const defaultConfig = {
   instanceLimits: {
@@ -11,7 +17,6 @@ export const defaultConfig = {
     maxSize: 1000 * 1000 // 1 M lines
   },
   logger: console,
-  moduleLogLevel: process.env.HINDSIGHT_LOG_LEVEL || 'error', // log level of hindsight module itself
   writeWhen: { level: 'info' }
 }
 
@@ -22,7 +27,6 @@ export function getConfig (caller = {}, env = process.env.NODE_ENV) {
     instanceLimits: caller.instanceLimits || envConfig.instanceLimits,
     logger: caller.logger || envConfig.logger,
     lineLimits: { ...envConfig.lineLimits, ...caller?.lineLimits },
-    moduleLogLevel: caller.moduleLogLevel || envConfig.moduleLogLevel,
     writeWhen: { ...envConfig.writeWhen, ...caller?.writeWhen }
   }
   return config
@@ -40,7 +44,6 @@ export const envConfigs = {
       maxBytes: 1000,
       maxSize: 10
     },
-    moduleLogLevel: process.env.HINDSIGHT_LOG_LEVEL || 'debug',
     writeWhen: { level: 'info' }
   },
   development: {
@@ -54,7 +57,6 @@ export const envConfigs = {
       maxBytes: 1000,
       maxSize: 10
     },
-    moduleLogLevel: process.env.HINDSIGHT_LOG_LEVEL || 'trace',
     writeWhen: { level: 'info' }
   },
   stress: {

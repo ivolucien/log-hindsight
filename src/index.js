@@ -3,6 +3,8 @@ import { getConfig } from './config.js'
 import LogAdapter from './adapter.js'
 import LevelBuffers from './level-buffers.js'
 import QuickLRU from 'quick-lru' // todo:  consider js-lru or lru-cache to externalize ttl handling
+import getScopedLoggers from './internal-loggers.js'
+const { trace, info } = getScopedLoggers('hindsight')
 
 // todo: track child instances per parent instance, add method for deleting instances
 // since we want logs to persist between task or API calls, track the instances to delay garbage collection
@@ -25,8 +27,6 @@ let GlobalHindsightInstances
  * @param {Object} perLineFields - The object properties to always log, stringified for singleton key.
   */
 export default class Hindsight {
-  _diagnosticLogLevel // private _trace through _error methods defined at end of class
-
   adapter
   // all log methods initialized in _initWrapper, including trace, info, error, etc.
   buffers
@@ -46,18 +46,18 @@ export default class Hindsight {
   }
 
   static getOrCreateChild (perLineFields, parentHindsight) {
+    trace('getOrCreateChild called', { perLineFields })
     const indexKey = Hindsight.getInstanceIndexString(perLineFields)
-    parentHindsight._debug({ indexKey, perLineFields })
+    info({ indexKey, perLineFields })
     const existingInstance = GlobalHindsightInstances.get(indexKey)
     return existingInstance || parentHindsight.child({ perLineFields })
   }
 
   constructor (config = {}, perLineFields = {}) {
     const { lineLimits, logger, writeWhen } = getConfig(config)
+    trace('Hindsight constructor called', { lineLimits, writeWhen, perLineFields })
 
     this.adapter = new LogAdapter(logger, perLineFields)
-    this._initInternalLogging()
-    this._debug('Hindsight constructor called', { lineLimits, writeWhen, perLineFields })
 
     this.perLineFields = perLineFields
     this.filterData = config.filterData || this._shallowCopy
@@ -70,7 +70,7 @@ export default class Hindsight {
     this.buffers = new LevelBuffers({ ...lineLimits, maxLineCount: lineLimits.maxSize })
 
     const instanceSignature = Hindsight.getInstanceIndexString(perLineFields)
-    this._debug('constructor', { instanceSignature, moduleKeys: Object.keys(logger) })
+    trace('constructor', { instanceSignature, moduleKeys: Object.keys(logger) })
     this._initWrapper()
     if (GlobalHindsightInstances == null) {
       Hindsight.initSingletonTracking(config?.instanceLimits)
@@ -88,6 +88,7 @@ export default class Hindsight {
    * @returns {Hindsight} A new Hindsight instance.
    */
   child ({ lineLimits = {}, perLineFields = {}, writeWhen = {} } = {}) {
+    trace('child called', { lineLimits, perLineFields })
     const { logger } = this.adapter
     const combinedFields = { ...this.perLineFields, ...perLineFields }
     const combinedwriteWhen = { ...this.writeWhen, ...writeWhen }
@@ -107,15 +108,6 @@ export default class Hindsight {
     return this.adapter.levelLookup[level]
   }
 
-  // Get and set the current module log level, this is separate from the proxied logger.
-  get moduleLogLevel () {
-    return this._diagnosticLogLevel
-  }
-
-  set moduleLogLevel (level) {
-    this._diagnosticLogLevel = this.levelValue(level) || this.moduleLogLevel
-  }
-
   /**
    * Limits the buffers based on the configured maximums. The method iterates over
    * each limit criteria, calling the corresponding private line limit method for each
@@ -123,6 +115,7 @@ export default class Hindsight {
    */
   // todo: this doesn't need to be dynamic, just call the methods directly
   applyLineLimits () {
+    trace('applyLineLimits called')
     this.buffers.limitByMaxAge()
     this.buffers.limitByMaxBytes()
     this.buffers.limitByMaxSize()
@@ -147,6 +140,7 @@ export default class Hindsight {
    * @param {function} writeLineNow - A user-defined function that decides if each line is written.
    */
   writeIf (levelCutoff, writeLineNow = (/* metadata, lineArgs */) => true) {
+    trace('writeIf called', { levelCutoff })
     const linesOut = []
     this.adapter.levelNames.forEach((levelName) => {
       const meetsThreshold = this.levelValue(levelName) >= this.levelValue(levelCutoff)
@@ -172,20 +166,10 @@ export default class Hindsight {
     linesOut.sort((a, b) => a.context.timestamp - b.context.timestamp)
 
     linesOut.forEach((line) => {
-      // todo: consider making this async to avoid blocking the event loop for large buffers
+      // todo: rewrite loop to do batch async to avoid blocking the event loop for large buffers
       this._writeLine(line.context.name, line.context, line.payload)
       this.buffers.deleteLine(line)
     })
-  }
-
-  /**
-   * Sets up internal (console) log methods for Hindsight code with '_' prefix.
-   * These methods are used for logging within the Hindsight class itself.
-   * @private
-   */
-  _initInternalLogging () {
-    const levelName = process.env.HINDSIGHT_LOG_LEVEL || 'error'
-    this._diagnosticLogLevel = levelName
   }
 
   /**
@@ -194,6 +178,7 @@ export default class Hindsight {
    * @private
    */
   _initWrapper () {
+    trace('_initWrapper called')
     this.adapter.levelNames.forEach((levelName) => {
       // populate this wrapper log method
       this[levelName] = (...payload) => {
@@ -211,6 +196,7 @@ export default class Hindsight {
    * @returns {void}
    */
   _logIntake (metadata, payload) {
+    trace('_logIntake called', metadata)
     // pull name from metadata, set defaults for specific metadata properties
     const {
       name,
@@ -224,7 +210,7 @@ export default class Hindsight {
     // todo: write sanitize function to remove sensitive data from log lines, if specified
 
     const action = this._selectAction(name, context, payload)
-    this._debug({ action, context })
+    trace({ action, context })
     if (action === 'discard') { return }
 
     if (action === 'write') {
@@ -250,7 +236,7 @@ export default class Hindsight {
 
   _selectAction (name, context, payload) {
     // todo? move into write logic module as this expands
-    this._trace({ name, context, lineArgCount: payload.length })
+    trace('_selectAction called', { name, context, lineArgCount: payload.length })
     if (payload.length === 0) {
       return 'discard' // log nothing if called with no payload
     } else if (typeof this.writeWhen.writeLineNow === 'function') {
@@ -261,7 +247,7 @@ export default class Hindsight {
     // todo: move to a getIntLevel() property?
     const threshold = this.levelValue(this?.writeWhen?.level)
     const lineLevel = this.levelValue(context.level || name)
-    this._debug({ threshold, lineLevel })
+    trace({ threshold, lineLevel })
 
     if (lineLevel < threshold) {
       return 'buffer'
@@ -279,6 +265,7 @@ export default class Hindsight {
    * @param {Array} payload - The arguments to pass to the original logger method.
    */
   _writeLine (name, context, payload) {
+    trace('_writeLine called', name, context)
     if (context.written !== true && payload?.length > 0) {
       context.written = true
       this[name].writeCounter++
@@ -308,6 +295,7 @@ export default class Hindsight {
   }
 
   _bufferLine (name, context, payload) {
+    trace('_bufferLine called', name, context)
     const filteredArgs = this.filterData(payload)
     const logEntry = {
       context: { name, ...context },
@@ -315,30 +303,6 @@ export default class Hindsight {
     }
     this.buffers.addLine(name, logEntry)
     this.applyLineLimits()
-  }
-
-  _levelCheck (level) {
-    return this.levelValue(level) >= this.levelValue(this._diagnosticLogLevel)
-  }
-
-  _trace (...payload) {
-    this._levelCheck('trace') && console.trace(...payload)
-  }
-
-  _debug (...payload) {
-    this._levelCheck('debug') && console.debug(...payload)
-  }
-
-  _info (...payload) {
-    this._levelCheck('info') && console.info(...payload)
-  }
-
-  _warn (...payload) {
-    this._levelCheck('warn') && console.warn(...payload)
-  }
-
-  _error (...payload) {
-    this._levelCheck('error') && console.error(...payload)
   }
 }
 

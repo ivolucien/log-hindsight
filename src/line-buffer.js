@@ -1,3 +1,6 @@
+import getScopedLoggers from './internal-loggers.js'
+const { trace } = getScopedLoggers('line-buffer')
+
 /**
  * LineBuffer class for storing log lines with array-like auto-incrementing key.
  */
@@ -16,6 +19,7 @@ class LineBuffer {
    * @returns {number} The index of the added log line.
    */
   add (line) {
+    trace('add called')
     const currentIndex = this.index
     this.lines.set(currentIndex, line)
     this.index++
@@ -37,6 +41,7 @@ class LineBuffer {
    * @returns {boolean} True if the log line was successfully deleted, false otherwise.
    */
   delete (index) {
+    trace('delete called')
     return this.lines.delete(index)
   }
 
@@ -52,6 +57,7 @@ class LineBuffer {
    * Clears all log lines from the buffer.
    */
   clear () {
+    trace('clear called')
     this.lines.clear()
     this.index = 0 // Reset the index after clearing the buffer
   }

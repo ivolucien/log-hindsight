@@ -1,4 +1,6 @@
 // ./src/conditions.js
+import getScopedLoggers from './internal-loggers.js'
+const { trace } = getScopedLoggers('conditions')
 
 export default class ConditionFactory {
   // all created conditions are bound to the Hindsight instance on writeWhen assignment
@@ -8,6 +10,7 @@ export default class ConditionFactory {
     return (metadata) => {
       const isError = this.levelValue(metadata.level) >= this.levelValue('error')
       if (isError) {
+        trace('dumpOnError triggered')
         this.writeIf(retroactiveLevelCutoff) // write all of instance's buffered lines not below cutoff
       }
       return true // this writes the error line regardless of the overall cutoff level
@@ -22,6 +25,9 @@ export default class ConditionFactory {
 
       const belowCutoff = this.levelValue(metadata.level) < this.levelValue(this.writeWhen.level)
 
+      if (isNth) {
+        trace('onEveryNth triggered', { lineCount: this.lineCounter })
+      }
       return !belowCutoff || isNth
     }
   }

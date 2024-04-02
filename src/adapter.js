@@ -1,4 +1,5 @@
-// generic adapter for supported logger functionality
+import getScopedLoggers from './internal-loggers.js'
+const { trace } = getScopedLoggers('adapter')// generic adapter for supported logger functionality
 
 export const LOG_LEVELS = {
   silly: 0,
@@ -42,6 +43,7 @@ class LogAdapter {
   lineFields
 
   static validateLogger (logger) {
+    trace('validateLogger called')
     if (logger == null || typeof logger !== 'object') {
       throw new Error('Invalid logger; must be a logger object')
     }
@@ -55,6 +57,7 @@ class LogAdapter {
   // create logger with default line fields initialized, if possible and not yet done
   // note that this.logger is set to its most verbose level, if we call a log method we want its output
   static useOrCreateLogger (logger, perLineFields = {}) {
+    trace('userOrCreateLogger called')
     // if the logger module is passed in, create an instance with the per line fields
     if (typeof logger.createLogger === 'function' && typeof logger.transports === 'object') {
       return logger.createLogger({ defaultMeta: perLineFields, level: 'silly' }) // winston
@@ -64,10 +67,10 @@ class LogAdapter {
         return logger.createLogger({ ...perLineFields, level: 'trace' }) // bunyan
       }
     }
-    if (logger.levels != null) { // only pino has .labels
-      if (logger.pino != null) {
+    if (logger.levels != null) { // only pino has .levels, in both module and instances
+      if (typeof logger === 'function') {
         if (Object.keys(perLineFields).length === 0) {
-          return logger({ level: 'trace' }) // just a parent logger if no per line fields
+          return logger({ level: 'trace' }) // just use a parent logger if no per line fields
         }
 
         return logger({ level: 'trace' }).child(perLineFields) // no way to set per line fields on the root logger
@@ -136,6 +139,7 @@ class LogAdapter {
    * @returns {Object} - The child logger instance.
    */
   child (...args) {
+    trace('child called')
     if (this.logger.child) {
       return this.logger.child(...args)
     }
