@@ -1,5 +1,7 @@
 import { expect } from 'chai'
 import Hindsight from '../index.js'
+import getScopedLoggers from '../internal-loggers.js'
+const { trace } = getScopedLoggers('tests:')
 
 function makeInstanceKey (sessionId) {
   return JSON.stringify({ sessionId })
@@ -23,7 +25,7 @@ describe('Hindsight instance lifecycle scenarios', function () {
 
     setTimeout(() => {
       const instances = Hindsight.getInstances()
-      instances.forEach((instance) => hindsight._debug({ instance: instance.perLineFields }))
+      instances.forEach((instance) => trace({ instance: instance.perLineFields }))
       expect(instances.size).to.be.at.most(10) // maxSize is 10
       expect(instances.has(makeInstanceKey('session19'))).to.be.true // Last instance should be present
       expect(instances.has(makeInstanceKey('session7'))).to.be.false // 8th instance should be evicted
@@ -42,7 +44,7 @@ describe('Hindsight instance lifecycle scenarios', function () {
     setTimeout(() => {
       instances = Hindsight.getInstances()
       // access instances to trigger lasy eviction
-      instances.forEach((instance) => hindsight._debug({ instance: instance.perLineFields }))
+      instances.forEach((instance) => trace({ instance: instance.perLineFields }))
       expect(instances.size).to.equal(0) // All instances should be expired
       done()
     }, 200) // Wait longer than maxAge
@@ -76,10 +78,10 @@ describe('Hindsight instance lifecycle scenarios', function () {
       const expectedUnique = {}
       // access instances to trigger lazy eviction
       instances.forEach((instance) => {
-        hindsight._debug(instance.perLineFields)
+        trace(instance.perLineFields)
         expectedUnique[instance.perLineFields.sessionId] = true
       })
-      hindsight._debug({ expectedUnique, size: instances.size, maxSize: instances.maxSize })
+      trace({ expectedUnique, size: instances.size, maxSize: instances.maxSize })
       expect(instances.size).to.be.at.most(childCount + 1) // QuickLRU has off by one bug?
       expect(Object.keys(expectedUnique).length).to.be.not.lessThan(instances.size) // All keys should be unique
 

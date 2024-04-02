@@ -22,16 +22,12 @@ describe('Environment configuration validation tests', function () {
       })
 
       it('should have all required fields', function () {
-        expect(config).to.have.all.keys('instanceLimits', 'lineLimits', 'logger', 'moduleLogLevel', 'writeWhen')
+        expect(config).to.have.all.keys('instanceLimits', 'lineLimits', 'logger', 'writeWhen')
       })
 
       it('should have a valid logger', function () {
         expect(config.logger).to.satisfy(logger => logger === console || typeof logger === 'object')
         expect(config.logger).to.include.keys(EXPECTED_LOG_LEVELS)
-      })
-
-      it('should have a valid module log level', function () {
-        expect(config.moduleLogLevel).to.be.oneOf(EXPECTED_LOG_LEVELS)
       })
 
       it('should have valid write level', function () {

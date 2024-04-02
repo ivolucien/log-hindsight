@@ -1,6 +1,8 @@
 import { expect } from 'chai'
 import Hindsight from '../index.js'
 import LevelBuffers from '../level-buffers.js'
+import getScopedLoggers from '../internal-loggers.js'
+const { trace } = getScopedLoggers('tests')
 
 describe('Hindsight applyLineLimits Tests', function () {
   let hindsight
@@ -25,7 +27,7 @@ describe('Hindsight applyLineLimits Tests', function () {
     // Check if the number of log lines are limited to 5
     const buffer = hindsight.buffers.get('debug')
     const expectedBufferKeys = hindsight.buffers.lineLimits.maxSize
-    hindsight._debug({ bufferKeys: buffer.lines.keys() })
+    trace({ bufferKeys: buffer.lines.keys() })
     expect(buffer.size).to.be.at.most(expectedBufferKeys)
   })
 
@@ -59,7 +61,7 @@ describe('Hindsight applyLineLimits Tests', function () {
     const infoBuffer = hindsight.buffers.get('info', 'test')
     const warnBuffer = hindsight.buffers.get('warn', 'test')
 
-    hindsight._debug({ GlobalLineRingbufferSize: hindsight.buffers.GlobalLineRingbuffer.size() })
+    trace({ GlobalLineRingbufferSize: hindsight.buffers.GlobalLineRingbuffer.size() })
     expect(infoBuffer.get(0)).to.exist // 'info' is below 'warn', so it should be deferred
     expect(warnBuffer.get(0)).to.not.exist // 'warn' is at or above 'warn', so it should be written immediately
   })

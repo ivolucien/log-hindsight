@@ -1,5 +1,7 @@
 import { expect } from 'chai'
 import Hindsight from '../index.js'
+import getScopedLoggers from '../internal-loggers.js'
+const { trace } = getScopedLoggers('tests')
 
 describe('Hindsight logIntake Tests', function () {
   function setupLogTest (metadata, ...payload) {
@@ -63,7 +65,7 @@ describe('Hindsight logIntake Tests', function () {
   it('should use a specific timestamp when provided', function () {
     const then = Date.now() - 1000
     const hindsight = setupLogTest({ name: 'debug', timestamp: then }, { message: 'Test log message' })
-    hindsight._debug(hindsight.buffers.get('debug'))
+    trace(hindsight.buffers.get('debug'))
 
     const testBuffer = expectValidLogBuffer(hindsight, 'debug')
     expectValidLogLine(testBuffer, {

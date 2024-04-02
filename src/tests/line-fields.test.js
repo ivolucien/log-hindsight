@@ -1,8 +1,12 @@
 import { expect } from 'chai'
 import Hindsight from '../index.js'
+import getScopedLoggers from '../internal-loggers.js'
+
 import winston from 'winston'
 import bunyan from 'bunyan'
 import pino from 'pino'
+
+const { trace } = getScopedLoggers('tests')
 
 describe('Hindsight perLineFields handling tests', function () {
   let hindsight
@@ -28,7 +32,7 @@ describe('Hindsight perLineFields handling tests', function () {
     if (expectedPerLineFields) {
       const decoratedPayload = hindsight._addPerLineFields(logLine.payload) // what would be written
       // per line fields are kept in the instance, they aren't copied to the line payload unless written
-      hindsight._debug(expectedPerLineFields, 'actual:', decoratedPayload)
+      trace(expectedPerLineFields, 'actual:', decoratedPayload)
       expect(decoratedPayload).to.deep.include(expectedPerLineFields)
       expect(decoratedPayload).to.include(hindsight.perLineFields)
     }
