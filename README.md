@@ -37,33 +37,42 @@ if (errorCondition) {
 ```
 
 ## Why Use Hindsight? (once production ready)
-_log-hindsight allows you to log much less normally but log more details when it's valuable._
-- When an error occurs write historical log details to support investigation.
-- Keep log retention costs low, but dynamically log details for a specific user.
+_log-hindsight allows you to log less detail normally but log more when it's valuable._
+
+Can be configured to:
+
+- Write previously unwritten logs when an error occurs.
+- Keep log retention costs low, but dynamically log details for a specific users or scenarios.
 - Log detailed information for a newly released endpoint.
 - Just write error log lines normally, but for every 100th user request, write at trace level.
 
-See [USE_CASES.md](USE_CASES.md) for more use case brainstorming and implementation ideas.
+See [USE_CASES.md](USE_CASES.md) for more ideas.
 
 ## Configuration Options
 
 | Option            | Description                           | Default                            |
 |-------------------|---------------------------------------|------------------------------------|
 | `logger`          | Logger module used to write output    | <pre>`console`</pre> |
-| `instanceLimits`  | Max count and age of logger objects   | <pre>`{ maxSize: 5000, maxAge: 70000 }`</pre> |
+| `instanceLimits`  | Max count and age of singleton loggers | <pre>`{ maxSize: 5000, maxAge: 70000 }`</pre> |
 | `lineLimits`      | Line buffer limits; count, age, bytes | <pre>`{`<br>`  maxSize: 1,000,0000,`<br>`  maxAge: 70,000,`<br>`  maxBytes: 100,000,000`<br>`}`</pre> |
 | `filterData`      | Function to clean or transform data   | <pre>`(arrayOfArgs) => {`<br>`  /* defaults to shallow copy when buffering */`<br>`}` |
 | `writeWhen`       | Options for how to handle log lines   | <pre>`{`<br>  `level: 'error',`<br>  `writeLineNow: <see below>`<br>`}`</pre> |
 | `writeWhen.level` | Level cutoff to consider writing now  | <pre>`'error'`</pre> |
 | `writeWhen.writeLineNow` | Determines what to do with log lines | <pre>`(metadata, lineArgs) => true`</pre> |
-| `moduleLogLevel`  | log-hindsight diagnostic log level    | <pre>`'error'`</pre> |
 
 Configuration defaults are merged in this order:
  - constructor parameter is top priority, if provided
  - else the NODE_ENV variable if there's a match in config.js
  - otherwise the default values in config.js - which are also the production env defaults
 
-See also: src/config.js for the full list of configuration options and their defaults per environment.
+log-hindsight uses the debug logger internally with 'hindsight:<component>:<level>' scoping.
+
+```
+DEBUG='hindsight:*,-*:trace # turn on info and error levels, only trace, info and error are used
+DEBUG='hindsight:tests:*' # turn on all test logging
+```
+
+See also: [src/config.js](src/config.js) for the full list of configuration options and their defaults per environment.
 
 ## Manual Child Logger Creation
 
