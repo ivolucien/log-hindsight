@@ -3,6 +3,17 @@ log-hindsight adds retroactive and conditional logic to standard loggers, allowi
 
 **NOT Production Ready** At this pre-alpha stage log-hindsight supports basic functions for a few popular logger modules, but has memory use and functional issues that need to be addressed before it can be used in production. It is not yet published to npm.
 
+## Table of Contents
+- [Pre-Alpha Features](#pre-alpha-features)
+- [Installation](#installation)
+- [Basic Usage](#basic-usage)
+- [Why Use Hindsight? (once production ready)](#why-use-hindsight-once-production-ready)
+- [Configuration Options](#configuration-options)
+- [Manual Child Logger Creation](#manual-child-logger-creation)
+- [Singleton Tracked Loggers](#singleton-tracked-loggers)
+- [Monitoring log-hindsight](#monitoring-log-hindsight)
+- [Contributors](#contributors)
+
 ## Pre-Alpha Features
 - **Retroactive Log History Dump**: Trigger previously buffered log entries, to be written out under specific conditions such as an error occurring.
 - **Session-specific Logging**: Track log contexts for individual user sessions or operational tasks.
