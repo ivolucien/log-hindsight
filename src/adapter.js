@@ -107,13 +107,13 @@ class LogAdapter {
     })
   }
 
-  _avoidIrreleventLogMethod (prop) {
+  _avoidIrrelevantLogMethod (prop) {
     // Winston using log() in its implementation, but it's not useful for our purposes
     return prop === 'log' && this.logger.transports && typeof this.logger.silly === 'function'
   }
 
   _resolveMethodName (prop) {
-    if (typeof this.logger[prop] === 'function' && !this._avoidIrreleventLogMethod(prop)) {
+    if (typeof this.logger[prop] === 'function' && !this._avoidIrrelevantLogMethod(prop)) {
       // Direct method exists on the logger
       return prop
     } else if (LEVEL_FALLBACK[prop]) {

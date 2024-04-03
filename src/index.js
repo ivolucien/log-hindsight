@@ -91,7 +91,7 @@ export default class Hindsight {
     trace('child called', { lineLimits, perLineFields })
     const { logger } = this.adapter
     const combinedFields = { ...this.perLineFields, ...perLineFields }
-    const combinedwriteWhen = { ...this.writeWhen, ...writeWhen }
+    const combinedWriteWhen = { ...this.writeWhen, ...writeWhen }
     const combinedLimits = { ...this.buffers.lineLimits, ...lineLimits }
 
     const innerChild = logger.child ? logger.child(perLineFields) : logger // use child factory if available
@@ -99,7 +99,7 @@ export default class Hindsight {
       instanceLimits: { maxAge: GlobalHindsightInstances.maxAge, maxSize: GlobalHindsightInstances.maxSize },
       lineLimits: combinedLimits,
       logger: innerChild,
-      writeWhen: combinedwriteWhen
+      writeWhen: combinedWriteWhen
     }
     return new Hindsight(childConfig, combinedFields)
   }

@@ -1,5 +1,5 @@
 // src/level-buffers.js
-import RingBuffer from 'ringbufferjs'
+import RingBuffer from 'ringbufferjs' // "js" here is not a file extension
 import sizeof from 'object-sizeof'
 import LineBuffer from './line-buffer.js'
 import getScopedLoggers from './internal-loggers.js'

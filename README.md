@@ -4,10 +4,12 @@ log-hindsight adds retroactive and conditional logic to standard loggers, allowi
 **NOT Production Ready** At this pre-alpha stage log-hindsight supports basic functions for a few popular logger modules, but has memory use and functional issues that need to be addressed before it can be used in production. It is not yet published to npm.
 
 ## Pre-Alpha Features
-- **Retroactive Log History Dump**: Trigger previously buffered log entries for a given hindsight object to be written out when the calling application detects specific conditions, such as an error occurring.
-- **Session-specific Logging**: Easily create and manage log contexts for individual user sessions or operational tasks, works with wrapped logger's child method if available.
-- **Configurable Log Retention**: Customize how long historical logs are retained in the buffer before being discarded, based on maximum line count, memory consumptions or time since the line was buffered.
-- **Integration with Standard Logging Libraries**: Wraps around popular logging modules, currently supports bunyan, pino, winston and console.
+- **Retroactive Log History Dump**: Trigger previously buffered log entries, to be written out under specific conditions such as an error occurring.
+- **Session-specific Logging**: Track log contexts for individual user sessions or operational tasks.
+- **Custom Data Filtering**: Apply custom data filtering or transformation to log lines before they are written, such as redacting sensitive data or retroactively adding fields.
+- **Conditional Write Logic**: Use a custom function for when to write log lines immediately, such as when an error occurs, or when to buffer them for possible future writing.
+- **Configurable Log Retention**: Customize how long buffered logs are retained before being discarded, by line count, memory consumption and/or line age.
+- **Integration with Standard Logging Libraries**: Adapts to wrapped logger, explicitly supports bunyan, pino, winston and console.
 
 ## Installation
 Installation instructions will be provided once the module is published to npm.
@@ -18,9 +20,9 @@ _This is for the current state of development. It will be updated as the module 
 ```javascript
 import Hindsight from 'log-hindsight'
 
-// Initialize Hindsight
+// Initialize Hindsight - many options are supported, see below and config.js
 // default configuration is keyed off of NODE_ENV environment variable, see config.js
-const logBuffer = new Hindsight() // production level: 'error', test: 'debug', test-dev: 'trace'
+const logBuffer = new Hindsight()
 
 // Log messages
 logBuffer.trace('Starting work...') // Buffered for possible future write
@@ -29,7 +31,7 @@ logBuffer.trace('Starting work...') // Buffered for possible future write
 // ...later in your application
 if (errorCondition) {
   // Manually trigger a log dump after an error,
-  // Automated by setting writeWhen.writeLineNow option to an onError function, example in condoitions.js
+  // Automated by setting writeWhen.writeLineNow option to an onError function, example in conditions.js
 
   logBuffer.writeIf('trace') // Write detailed log lines as context for the error
   logBuffer.error(new Error(errorCondition)) // Written immediately by default log level
@@ -39,14 +41,12 @@ if (errorCondition) {
 ## Why Use Hindsight? (once production ready)
 _log-hindsight allows you to log less detail normally but log more when it's valuable._
 
-Can be configured to:
+Highly customizable, see conditions.js for examples of custom logic.
 
 - Write previously unwritten logs when an error occurs.
 - Keep log retention costs low, but dynamically log details for a specific users or scenarios.
 - Log detailed information for a newly released endpoint.
 - Just write error log lines normally, but for every 100th user request, write at trace level.
-
-See [USE_CASES.md](USE_CASES.md) for more ideas.
 
 ## Configuration Options
 
@@ -65,13 +65,6 @@ Configuration defaults are merged in this order:
  - else the NODE_ENV variable if there's a match in config.js
  - otherwise the default values in config.js - which are also the production env defaults
 
-log-hindsight uses the debug logger internally with 'hindsight:<component>:<level>' scoping.
-
-```
-DEBUG='hindsight:*,-*:trace # turn on info and error levels, only trace, info and error are used
-DEBUG='hindsight:tests:*' # turn on all test logging
-```
-
 See also: [src/config.js](src/config.js) for the full list of configuration options and their defaults per environment.
 
 ## Manual Child Logger Creation
@@ -87,6 +80,8 @@ childLogger.info('Session-specific log message')
 ## Singleton Tracked Loggers
 If you wish to reuse a single logger instance across separate calls of a task or API session, use the static `getOrCreateChild` method to retrieve a child logger for a known unique ID -- it will create one if it doesn't exist yet (within the same node process).
 
+For distributed systems it's valuable to implement session affinity to amplify this modules' benefits.
+
 ```javascript
 // child logger created for the first log call for this session
 const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' })
@@ -94,6 +89,15 @@ const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' }
 <later...>
 // a separate call processing that same session, gets the same child logger (if within the same process)
 const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' })
+```
+
+## Monitoring log-hindsight
+
+log-hindsight uses the debug logger internally with 'hindsight:<component>:<level>' scoping.
+
+```
+DEBUG='hindsight:*,-*:trace # turn on info and error levels, only trace, info and error are used
+DEBUG='hindsight:tests:*' # turn on all test logging
 ```
 
 ## Contributors
