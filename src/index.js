@@ -35,6 +35,8 @@ export default class Hindsight {
   buffers
   perLineFields = {}
   writeWhen = {}
+  buffersMutex
+  batchSize = 100
 
   static initSingletonTracking (instanceLimits = getConfig().instanceLimits) {
     GlobalHindsightInstances = new QuickLRU(instanceLimits) // can use in tests to reset state
@@ -64,6 +66,7 @@ export default class Hindsight {
     this.perLineFields = perLineFields
     this.filterData = config.filterData || this._shallowCopy
 
+    this.buffersMutex = new Mutex()
     this.writeWhen = writeWhen
     if (typeof this.writeWhen.writeLineNow === 'function') {
       this.writeWhen.writeLineNow = this.writeWhen.writeLineNow.bind(this)
@@ -110,6 +113,11 @@ export default class Hindsight {
     return this.adapter.levelLookup[level]
   }
 
+  async batchYield () {
+    trace('batchYield called')
+    await setTimeout(0)
+  }
+
   /**
    * Limits the buffers based on the configured maximums. The method iterates over
    * each limit criteria, calling the corresponding private line limit method for each
@@ -143,35 +151,60 @@ export default class Hindsight {
    */
   writeIf (levelCutoff, writeLineNow = (/* metadata, lineArgs */) => true) {
     trace('writeIf called', { levelCutoff })
-    const linesOut = []
-    this.adapter.levelNames.forEach((levelName) => {
-      const meetsThreshold = this.levelValue(levelName) >= this.levelValue(levelCutoff)
-      if (!meetsThreshold) {
-        return
-      }
-      const buffer = this.buffers.get(levelName)
 
-      buffer.lines.forEach((line) => {
-        // todo: write as batched async to avoid blocking the event loop for large buffers
-        if (line != null && line.context != null) {
-          const metadata = this._getMetadata(levelName, line.context)
+    // fire and forget since it might take quite a while to complete
+    ;(async () => {
+      try {
+        // reserve the buffers for exclusive access
+        await this.buffersMutex.runExclusive(async () => {
+          trace('writeIf async fired to forget')
+          const linesOut = []
+          let batchCount = 1
 
-          if (writeLineNow({ metadata, lineArgs: line.payload })) {
-            line.context.name = levelName // add name to context for writing chronologically across levels
-            linesOut.push(line)
+          // walk through level buffers in order to identify lines to write
+          for (const levelName of this.adapter.levelNames) {
+            trace(`writeIf '${levelName}' loop`)
+            const meetsThreshold = this.levelValue(levelName) >= this.levelValue(levelCutoff)
+            if (!meetsThreshold) {
+              trace('level below threshold')
+              continue
+            }
+            const buffer = this.buffers.get(levelName)
+
+            for (const [/* index */, line] of buffer.lines) {
+              trace('writeIf line')
+
+              if (line != null && line.context != null) {
+                const metadata = this._getMetadata(levelName, line.context)
+
+                if (writeLineNow({ metadata, lineArgs: line.payload })) {
+                  line.context.name = levelName // add name to context for writing chronologically across levels
+                  linesOut.push(line)
+                }
+              }
+              if (batchCount++ % this.batchSize === 0) {
+                await this.batchYield()
+              }
+            }
           }
-        }
-      })
-    })
 
-    // Sort lines by line.context.timestamp in ascending order
-    linesOut.sort((a, b) => a.context.timestamp - b.context.timestamp)
+          // Sort lines by line.context.timestamp in ascending order
+          linesOut.sort((a, b) => a.context.timestamp - b.context.timestamp)
 
-    linesOut.forEach((line) => {
-      // todo: rewrite loop to do batch async to avoid blocking the event loop for large buffers
-      this._writeLine(line.context.name, line.context, line.payload)
-      this.buffers.deleteLine(line)
-    })
+          for (const line of linesOut) {
+            this._writeLine(line.context.name, line.context, line.payload)
+            this.buffers.deleteLine(line)
+
+            if (batchCount++ % this.batchSize === 0) {
+              await this.batchYield()
+            }
+          }
+        })
+      } catch (err) {
+        error('Error in writeIf call, some lines might not have been written')
+        error(err)
+      }
+    })()
   }
 
   /**
@@ -197,7 +230,7 @@ export default class Hindsight {
    * @param {Array} payload - The original args passed to the proxied log method.
    * @returns {void}
    */
-  _logIntake (metadata, payload) {
+  async _logIntake (metadata, payload) {
     trace('_logIntake called', metadata)
     // pull name from metadata, set defaults for specific metadata properties
     const {
@@ -218,7 +251,7 @@ export default class Hindsight {
     if (action === 'write') {
       this._writeLine(name, context, payload)
     } else if (action === 'buffer') {
-      this._bufferLine(name, context, payload)
+      await this._bufferLine(name, context, payload)
     }
   }
 
@@ -296,7 +329,7 @@ export default class Hindsight {
     return filtered
   }
 
-  _bufferLine (name, context, payload) {
+  async _bufferLine (name, context, payload) {
     trace('_bufferLine called', name, context)
     const filteredArgs = this.filterData(payload)
     const logEntry = {
