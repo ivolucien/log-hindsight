@@ -38,7 +38,7 @@ describe('Hindsight perLineFields handling tests', function () {
     }
   }
 
-  it('should include perLineFields in the final payload', function () {
+  it('should include perLineFields in the final payload', async function () {
     const perLineFields = { userId: 'user123', sessionId: 'session456' }
     hindsight = new Hindsight({ writeWhen: { level: 'info' } }, perLineFields)
     hindsight._logIntake(
