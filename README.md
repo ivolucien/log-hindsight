@@ -14,6 +14,8 @@ log-hindsight adds retroactive and conditional logic to standard loggers, allowi
 - [Monitoring log-hindsight](#monitoring-log-hindsight)
 - [Contributors](#contributors)
 
+<br>
+
 ## Pre-Alpha Features
 - **Retroactive Log History Dump**: Trigger previously buffered log entries, to be written out under specific conditions such as an error occurring.
 - **Session-specific Logging**: Track log contexts for individual user sessions or operational tasks.

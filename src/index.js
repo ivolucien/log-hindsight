@@ -1,10 +1,13 @@
 // src/index.js
+import { setTimeout } from 'timers/promises'
+import { Mutex } from 'async-mutex'
+import QuickLRU from 'quick-lru' // todo:  consider js-lru or lru-cache to externalize ttl handling
+
 import { getConfig } from './config.js'
 import LogAdapter from './adapter.js'
 import LevelBuffers from './level-buffers.js'
-import QuickLRU from 'quick-lru' // todo:  consider js-lru or lru-cache to externalize ttl handling
 import getScopedLoggers from './internal-loggers.js'
-const { trace, info } = getScopedLoggers('hindsight')
+const { trace, info, error } = getScopedLoggers('hindsight')
 
 // todo: track child instances per parent instance, add method for deleting instances
 // since we want logs to persist between task or API calls, track the instances to delay garbage collection
@@ -46,9 +49,8 @@ export default class Hindsight {
   }
 
   static getOrCreateChild (perLineFields, parentHindsight) {
-    trace('getOrCreateChild called', { perLineFields })
     const indexKey = Hindsight.getInstanceIndexString(perLineFields)
-    info({ indexKey, perLineFields })
+    trace('getOrCreateChild called', { indexKey, perLineFields })
     const existingInstance = GlobalHindsightInstances.get(indexKey)
     return existingInstance || parentHindsight.child({ perLineFields })
   }
@@ -305,32 +307,3 @@ export default class Hindsight {
     this.applyLineLimits()
   }
 }
-
-// todo: add lineLimits / purge function to keep to specified data limits (cullLogLines?)
-// todo: add method to use rules to sanitize, keep or write log lines (logDirector?)
-
-/*
-hindsight.buffers format
-LevelBuffers: {
-  info: {
-    sequence<integer>: {
-      context: {
-        name<string>,
-        timestamp<number>,
-        sequence<integer>,
-        ...<any>
-      },
-      payload: [
-        // examples, not required
-        { message: * },
-        err<Error>,
-        ...<any>
-      ]
-    }
-  },
-  warn: {
-    ...
-  },
-  ...
-}
-*/

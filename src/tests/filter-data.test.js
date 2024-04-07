@@ -13,7 +13,7 @@ describe('Hindsight filterData functionality', () => {
     hindsight.debug(...originalArgs)
 
     const bufferedLine = hindsight.buffers.get('debug').get(0)
-    console.dir(bufferedLine)
+
     expect(bufferedLine.payload).to.eql(originalArgs) // Checks for deep equality in value
     expect(bufferedLine.payload[0]).to.not.equal(originalArgs[0]) // top level params cloned
     expect(bufferedLine.payload[0].nested).to.equal(originalArgs[0].nested) // nested params not cloned

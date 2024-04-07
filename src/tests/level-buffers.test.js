@@ -39,8 +39,6 @@ describe('Hindsight level buffers', function () {
     const lineLimits = {
       maxSize: 5000
     }
-    console.log(envConfig)
-
     LevelBuffers.initGlobalLineTracking(lineLimits.maxSize) // reset static line index
 
     const hindsight = new Hindsight({ lineLimits })
@@ -96,7 +94,6 @@ describe('Hindsight level buffers', function () {
     expect(fatalBuffer[0]).to.not.exist // printed, not buffered
 
     expect(printed).to.have.lengthOf(2)
-    console.dir(printed)
     expect(printed.some((msg) => msg.includes('error'))).to.be.true
     expect(printed.some((msg) => msg.includes('fatal'))).to.be.true
   })

@@ -57,31 +57,41 @@ class LogAdapter {
   // create logger with default line fields initialized, if possible and not yet done
   // note that this.logger is set to its most verbose level, if we call a log method we want its output
   static useOrCreateLogger (logger, perLineFields = {}) {
-    trace('userOrCreateLogger called')
+    trace('useOrCreateLogger called')
+    const isModule = typeof logger === 'function'
     // if the logger module is passed in, create an instance with the per line fields
-    if (typeof logger.createLogger === 'function' && typeof logger.transports === 'object') {
-      return logger.createLogger({ defaultMeta: perLineFields, level: 'silly' }) // winston
+    const isWinstonModule = typeof logger.createLogger === 'function' && typeof logger.transports === 'object'
+    if (isWinstonModule) {
+      trace('Winston module')
+      return logger.createLogger({ defaultMeta: perLineFields, level: 'silly' })
     }
-    if (typeof logger === 'function') { // these modules are functions, instances are objects
-      if (typeof logger.createLogger === 'function') {
-        return logger.createLogger({ ...perLineFields, level: 'trace' }) // bunyan
-      }
+
+    const isBunyanModule = isModule && typeof logger.createLogger === 'function'
+    if (isBunyanModule) {
+      trace('Bunyan module')
+      return logger.createLogger({ ...perLineFields, level: 'trace' })
     }
-    if (logger.levels != null) { // only pino has .levels, in both module and instances
-      if (typeof logger === 'function') {
+
+    const isPino = logger.levels != null
+    if (isPino) { // only pino has .levels, in both module and instances
+      if (isModule) {
+        trace('Pino module')
         if (Object.keys(perLineFields).length === 0) {
-          return logger({ level: 'trace' }) // just use a parent logger if no per line fields
+          return logger({ level: 'trace' }) // just use a passed instance if no per line fields
         }
 
         return logger({ level: 'trace' }).child(perLineFields) // no way to set per line fields on the root logger
       }
 
+      trace('Pino instance')
       return logger.child(perLineFields, { level: 'trace' }) // override the parent instance's level
     }
+    trace('Winston or Bunyan instance, or console')
     return logger // if it's already an instance, just return it
   }
 
   constructor (logger, perLineFields) {
+    trace('LogAdapter constructor called')
     this.logger = LogAdapter.useOrCreateLogger(logger, perLineFields)
     LogAdapter.validateLogger(this.logger)
 
