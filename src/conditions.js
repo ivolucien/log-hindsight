@@ -8,7 +8,7 @@ export default class ConditionFactory {
   // if passed an error log line, the returned `writeWhen` function will always write all buffered lines
   static createDumpOnError (retroactiveLevelCutoff) {
     return (metadata) => {
-      const isError = this.levelValue(metadata.level) >= this.levelValue('error')
+      const isError = this.toInt(metadata.level) >= this.toInt('error')
       if (isError) {
         trace('dumpOnError triggered')
         this.writeIf(retroactiveLevelCutoff) // write all of instance's buffered lines not below cutoff
@@ -23,7 +23,7 @@ export default class ConditionFactory {
       this.lineCounter ? this.lineCounter += 1 : this.lineCounter = 1 // initialize or increment
       const isNth = this.lineCounter % countInterval === 1
 
-      const belowCutoff = this.levelValue(metadata.level) < this.levelValue(this.writeWhen.level)
+      const belowCutoff = this.toInt(metadata.level) < this.toInt(this.writeWhen.level)
 
       if (isNth) {
         trace('onEveryNth triggered', { lineCount: this.lineCounter })
@@ -38,7 +38,7 @@ export default class ConditionFactory {
     return (metadata, lineArgs) => {
       const effectiveLevel = getDynamicLevel(metadata, lineArgs) // return level string based on caller's logic
 
-      const belowCutoff = this.levelValue(metadata.level) < this.levelValue(effectiveLevel)
+      const belowCutoff = this.toInt(metadata.level) < this.toInt(effectiveLevel)
       return !belowCutoff
     }
   }

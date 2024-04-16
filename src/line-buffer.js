@@ -41,7 +41,7 @@ class LineBuffer {
    * @returns {boolean} True if the log line was successfully deleted, false otherwise.
    */
   delete (index) {
-    trace('delete called')
+    trace('delete called', { size: this.size })
     return this.lines.delete(index)
   }
 

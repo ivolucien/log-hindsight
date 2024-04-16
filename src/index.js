@@ -109,13 +109,12 @@ export default class Hindsight {
     return new Hindsight(childConfig, combinedFields)
   }
 
-  levelValue (level) {
+  toInt (level) {
     return this.adapter.levelLookup[level]
   }
 
-  async batchYield () {
-    trace('batchYield called')
-    await setTimeout(0)
+  get totalLineCount () {
+    return this.buffers.GlobalLineRingbuffer.size()
   }
 
   /**
@@ -135,15 +134,16 @@ export default class Hindsight {
    * User-defined function that is called for each buffered line to decide if it's written.
    * This function should return `true` to write the line immediately, or `false` to keep it buffered.
    *
-   * @callback perLineWriteDecision
-   * @param {Object} lineContext - The context object for the log line, including metadata like log level and timestamp.
-   * @param {Array} linePayload - The original arguments passed to the proxied log method.
-   * @param {Object} moduleStats - Statistics for the module, such as `estimatedBytes` and `totalLineCount`.
+   * @callback writeLineNow
+   * @param {Object} args - contains named parameters metadata and payload
+   * @param {Object} args.metadata - Context object for the log line, with module and buffer stats.
+   * @param {Array} args.payload - The original arguments passed to the proxied log method.
    * @returns {boolean} - `true` to write the line immediately, `false` to keep it buffered.
    */
 
   /**
-   * Iterates over log level buffers at or above levelCutoff and writes all lines based on the decision made by the provided `writeDecision` function.
+   * Iterates over log level buffers at or above levelCutoff, writing all lines where the provided
+   *   `writeLineNow` function returns true.
    * Call this to write this session's history. (presumes you've stored session Id in perLineFields)
    *
    * @param {string} levelCutoff - Filter out lines below this level before perLineWriteDecision is called.
@@ -153,7 +153,7 @@ export default class Hindsight {
     trace('writeIf called', { levelCutoff })
 
     // fire and forget since it might take quite a while to complete
-    ;(async () => {
+    ;(async () => { // must ;
       try {
         // reserve the buffers for exclusive access
         await this.buffersMutex.runExclusive(async () => {
@@ -164,7 +164,7 @@ export default class Hindsight {
           // walk through level buffers in order to identify lines to write
           for (const levelName of this.adapter.levelNames) {
             trace(`writeIf '${levelName}' loop`)
-            const meetsThreshold = this.levelValue(levelName) >= this.levelValue(levelCutoff)
+            const meetsThreshold = this.toInt(levelName) >= this.toInt(levelCutoff)
             if (!meetsThreshold) {
               trace('level below threshold')
               continue
@@ -217,7 +217,7 @@ export default class Hindsight {
     this.adapter.levelNames.forEach((levelName) => {
       // populate this wrapper log method
       this[levelName] = (...payload) => {
-        this._logIntake({ name: levelName, level: this.levelValue(levelName) }, payload)
+        this._logIntake({ name: levelName, level: this.toInt(levelName) }, payload)
       }
       this[levelName].writeCounter = 0 // initialize counter for this log method, for tests
     })
@@ -245,7 +245,7 @@ export default class Hindsight {
     // todo: write sanitize function to remove sensitive data from log lines, if specified
 
     const action = this._selectAction(name, context, payload)
-    trace({ action, context })
+    trace({ action, timestamp: context.timestamp, sequence: context.sequence, bytes: context.lineBytes })
     if (action === 'discard') { return }
 
     if (action === 'write') {
@@ -259,7 +259,7 @@ export default class Hindsight {
     const buffer = this.buffers.get(levelName)
     const metadata = {
       estimatedBufferBytes: this.buffers.estimatedBytes,
-      totalLineCount: this.buffers.GlobalLineRingbuffer.size(),
+      totalLineCount: this.totalLineCount,
       levelLinesBuffered: buffer.size,
       levelLinesWritten: this[levelName].writeCounter,
       level: levelName,
@@ -271,7 +271,7 @@ export default class Hindsight {
 
   _selectAction (name, context, payload) {
     // todo? move into write logic module as this expands
-    trace('_selectAction called', { name, context, lineArgCount: payload.length })
+    trace('_selectAction called', { name, lineBytes: context.lineBytes, lineArgCount: payload.length })
     if (payload.length === 0) {
       return 'discard' // log nothing if called with no payload
     } else if (typeof this.writeWhen.writeLineNow === 'function') {
@@ -280,8 +280,8 @@ export default class Hindsight {
     }
 
     // todo: move to a getIntLevel() property?
-    const threshold = this.levelValue(this?.writeWhen?.level)
-    const lineLevel = this.levelValue(context.level || name)
+    const threshold = this.toInt(this?.writeWhen?.level)
+    const lineLevel = this.toInt(context.level || name)
     trace({ threshold, lineLevel })
 
     if (lineLevel < threshold) {
@@ -300,7 +300,7 @@ export default class Hindsight {
    * @param {Array} payload - The arguments to pass to the original logger method.
    */
   _writeLine (name, context, payload) {
-    trace('_writeLine called', name, context)
+    trace('_writeLine called', { level: name, timestamp: context.timestamp, sequence: context.sequence })
     if (context.written !== true && payload?.length > 0) {
       context.written = true
       this[name].writeCounter++

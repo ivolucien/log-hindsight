@@ -49,7 +49,7 @@ describe('hindsight.writeIf() Tests', function () {
     await waitForBuffersMutexUnlock(hindsight, () => {
       expect(spy).to.have.been.called.once
       expect(spy.__spy.calls[0][0]).to.deep.include({
-        lineArgs: ['Info message for UDF']
+        payload: ['Info message for UDF']
       })
       expect(spy.__spy.calls[0][0].metadata).to.include.keys(['level', 'timestamp', 'estimatedLineBytes'])
     })

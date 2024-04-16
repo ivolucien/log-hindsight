@@ -96,7 +96,7 @@ describe('Hindsight perLineFields handling tests', function () {
     const parentHindsight = new Hindsight({}, parentPerLineFields)
     hindsight = parentHindsight.child({ perLineFields: childPerLineFields })
 
-    hindsight._logIntake({ name: 'trace' }, ['Another child logger message'])
+    hindsight.trace('Another child logger message')
 
     const testBuffer = expectValidLogBuffer(hindsight, 'trace')
     expectValidLogLine(testBuffer, {
