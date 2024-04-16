@@ -130,6 +130,33 @@ export default class Hindsight {
     this.buffers.limitByMaxSize()
   }
 
+  async _batchYield () {
+    trace('batchYield called')
+    await setTimeout(0)
+  }
+
+  async _pushMatchingLines (levelName, writeLineNow, linesOut) {
+    const buffer = this.buffers.get(levelName)
+    let batchCount = 1
+
+    for (const [/* index */, line] of buffer.lines) { // destructure, ignore index here
+      trace('writeIf line')
+
+      if (line != null && line.context != null && line.context.written !== true) {
+        const metadata = this._getMetadata(levelName, line.context)
+
+        if (await writeLineNow({ metadata, payload: line.payload })) {
+          line.context.name = levelName // add name to context for writing chronologically across levels
+          linesOut.push(line)
+        }
+      }
+      if (batchCount++ % this.batchSize === 0) {
+        await this._batchYield()
+      }
+    }
+    return linesOut
+  }
+
   /**
    * User-defined function that is called for each buffered line to decide if it's written.
    * This function should return `true` to write the line immediately, or `false` to keep it buffered.
@@ -149,7 +176,8 @@ export default class Hindsight {
    * @param {string} levelCutoff - Filter out lines below this level before perLineWriteDecision is called.
    * @param {function} writeLineNow - A user-defined function that decides if each line is written.
    */
-  writeIf (levelCutoff, writeLineNow = (/* metadata, lineArgs */) => true) {
+  writeIf (levelCutoff, writeLineNow = async (/* metadata, lineArgs */) => true) {
+    // NOTE: this function is intentionally not async. it does call async functions that it leaves in the background.
     trace('writeIf called', { levelCutoff })
 
     // fire and forget since it might take quite a while to complete
@@ -169,34 +197,20 @@ export default class Hindsight {
               trace('level below threshold')
               continue
             }
-            const buffer = this.buffers.get(levelName)
 
-            for (const [/* index */, line] of buffer.lines) {
-              trace('writeIf line')
-
-              if (line != null && line.context != null) {
-                const metadata = this._getMetadata(levelName, line.context)
-
-                if (writeLineNow({ metadata, lineArgs: line.payload })) {
-                  line.context.name = levelName // add name to context for writing chronologically across levels
-                  linesOut.push(line)
-                }
-              }
-              if (batchCount++ % this.batchSize === 0) {
-                await this.batchYield()
-              }
-            }
+            await this._pushMatchingLines(levelName, writeLineNow, linesOut)
           }
-
           // Sort lines by line.context.timestamp in ascending order
-          linesOut.sort((a, b) => a.context.timestamp - b.context.timestamp)
+          trace({ linesOutCount: linesOut.length })
+          linesOut.sort((a, b) => a.context.timestamp - b.context.timestamp) // is this efficient enough?
 
           for (const line of linesOut) {
             this._writeLine(line.context.name, line.context, line.payload)
             this.buffers.deleteLine(line)
 
             if (batchCount++ % this.batchSize === 0) {
-              await this.batchYield()
+              info('Batch writeIf', { batchCount })
+              await this._batchYield(batchCount++) // only await yield at batch end
             }
           }
         })
