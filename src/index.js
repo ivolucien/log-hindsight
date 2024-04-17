@@ -34,9 +34,10 @@ export default class Hindsight {
   // all log methods initialized in _initWrapper, including trace, info, error, etc.
   buffers
   perLineFields = {}
-  writeWhen = {}
   buffersMutex
   batchSize = 100
+
+  _writeWhen = {}
 
   static initSingletonTracking (instanceLimits = getConfig().instanceLimits) {
     GlobalHindsightInstances = new QuickLRU(instanceLimits) // can use in tests to reset state
@@ -67,12 +68,12 @@ export default class Hindsight {
     this.filterData = config.filterData || this._shallowCopy
 
     this.buffersMutex = new Mutex()
-    this.writeWhen = writeWhen
-    if (typeof this.writeWhen.writeLineNow === 'function') {
-      this.writeWhen.writeLineNow = this.writeWhen.writeLineNow.bind(this)
+    this._writeWhen = writeWhen
+    if (typeof this._writeWhen.writeLineNow === 'function') {
+      this._writeWhen.writeLineNow = this._writeWhen.writeLineNow.bind(this)
     }
 
-    this.buffers = new LevelBuffers({ ...lineLimits, maxLineCount: lineLimits.maxSize })
+    this.buffers = new LevelBuffers({ ...lineLimits, maxLineCount: lineLimits.maxCount })
 
     const instanceSignature = Hindsight.getInstanceIndexString(perLineFields)
     trace('constructor', { instanceSignature, moduleKeys: Object.keys(logger) })
@@ -96,7 +97,7 @@ export default class Hindsight {
     trace('child called', { lineLimits, perLineFields })
     const { logger } = this.adapter
     const combinedFields = { ...this.perLineFields, ...perLineFields }
-    const combinedWriteWhen = { ...this.writeWhen, ...writeWhen }
+    const combinedWriteWhen = { ...this._writeWhen, ...writeWhen }
     const combinedLimits = { ...this.buffers.lineLimits, ...lineLimits }
 
     const innerChild = logger.child ? logger.child(perLineFields) : logger // use child factory if available
@@ -117,17 +118,28 @@ export default class Hindsight {
     return this.buffers.GlobalLineRingbuffer.size()
   }
 
+  get writeWhen () {
+    return { ...this._writeWhen }
+  }
+
+  set writeWhen (writeWhen) {
+    this._writeWhen.level = this.toInt(writeWhen?.level) >= 0 ? writeWhen.level : this._writeWhen.level
+    this._writeWhen.writeLineNow = writeWhen.writeLineNow || this._writeWhen.writeLineNow
+    if (typeof this._writeWhen.writeLineNow === 'function') {
+      this._writeWhen.writeLineNow = this._writeWhen.writeLineNow.bind(this)
+    }
+  }
+
   /**
    * Limits the buffers based on the configured maximums. The method iterates over
    * each limit criteria, calling the corresponding private line limit method for each
    * criteria with the currently configured limit.
    */
-  // todo: this doesn't need to be dynamic, just call the methods directly
   applyLineLimits () {
     trace('applyLineLimits called')
     this.buffers.limitByMaxAge()
     this.buffers.limitByMaxBytes()
-    this.buffers.limitByMaxSize()
+    this.buffers.limitByMaxCount()
   }
 
   async _batchYield () {
@@ -288,13 +300,13 @@ export default class Hindsight {
     trace('_selectAction called', { name, lineBytes: context.lineBytes, lineArgCount: payload.length })
     if (payload.length === 0) {
       return 'discard' // log nothing if called with no payload
-    } else if (typeof this.writeWhen.writeLineNow === 'function') {
+    } else if (typeof this._writeWhen.writeLineNow === 'function') {
       const metadata = this._getMetadata(name, context)
-      return this.writeWhen.writeLineNow({ metadata, lineArgs: payload })
+      return this._writeWhen.writeLineNow({ metadata, lineArgs: payload })
     }
 
     // todo: move to a getIntLevel() property?
-    const threshold = this.toInt(this?.writeWhen?.level)
+    const threshold = this.toInt(this?._writeWhen?.level)
     const lineLevel = this.toInt(context.level || name)
     trace({ threshold, lineLevel })
 

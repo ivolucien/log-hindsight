@@ -36,7 +36,7 @@ describe('Environment configuration validation tests', function () {
       })
 
       it('should have valid lineLimits settings', function () {
-        expect(config).to.have.nested.property('lineLimits.maxSize')
+        expect(config).to.have.nested.property('lineLimits.maxCount')
           .to.be.a('number').that.is.at.least(2)
           .and.is.at.most(MAX_LINE_COUNT_LIMIT)
         expect(config).to.have.nested.property('lineLimits.maxAge')
@@ -50,13 +50,13 @@ describe('Environment configuration validation tests', function () {
       it('should override default values with manually specified config values', function () {
         const customConfig = {
           instanceLimits: { maxSize: 100, maxAge: 200, maxBytes: 10 * 1024 },
-          lineLimits: { maxSize: 300, maxAge: 400, maxBytes: 99 * 1000 }
+          lineLimits: { maxCount: 300, maxAge: 400, maxBytes: 99 * 1000 }
         }
         const overriddenConfig = getConfig(customConfig, env)
 
         expect(overriddenConfig.instanceLimits.maxSize).to.equal(customConfig.instanceLimits.maxSize)
         expect(overriddenConfig.instanceLimits.maxAge).to.equal(customConfig.instanceLimits.maxAge)
-        expect(overriddenConfig.lineLimits.maxSize).to.equal(customConfig.lineLimits.maxSize)
+        expect(overriddenConfig.lineLimits.maxCount).to.equal(customConfig.lineLimits.maxCount)
         expect(overriddenConfig.lineLimits.maxAge).to.equal(customConfig.lineLimits.maxAge)
         expect(overriddenConfig.lineLimits.maxBytes).to.equal(customConfig.lineLimits.maxBytes)
       })
@@ -64,7 +64,7 @@ describe('Environment configuration validation tests', function () {
       it('should not throw errors when creating new Hindsight objects with various config values', function () {
         const customConfig = {
           instanceLimits: { maxSize: 100, maxAge: 200 },
-          lineLimits: { maxSize: 300, maxAge: 400 }
+          lineLimits: { maxCount: 300, maxAge: 400 }
         }
 
         expect(() => new Hindsight(customConfig)).to.not.throw()
@@ -75,11 +75,11 @@ describe('Environment configuration validation tests', function () {
         let customConfig = getConfig({ writeWhen: { level: 'warn' } }, env)
         expect(customConfig.writeWhen.level).to.equal('warn')
         // other values is still the default
-        expect(customConfig.lineLimits.maxSize).to.equal(config.lineLimits.maxSize)
+        expect(customConfig.lineLimits.maxCount).to.equal(config.lineLimits.maxCount)
 
-        customConfig = getConfig({ lineLimits: { maxSize: 300 } }, env)
+        customConfig = getConfig({ lineLimits: { maxCount: 300 } }, env)
         expect(customConfig.lineLimits).to.deep.equal({
-          maxSize: 300,
+          maxCount: 300,
           maxAge: config.lineLimits.maxAge,
           maxBytes: config.lineLimits.maxBytes
         })

@@ -37,7 +37,7 @@ describe('ConditionFactory Tests', function () {
   describe('createOnEveryNth', function () {
     it('should return true for every Nth log line', function () {
       const onEveryNth = ConditionFactory.createOnEveryNth.call(hindsight, 2)
-      hindsight.writeWhen.writeLineNow = onEveryNth
+      hindsight.writeWhen = { writeLineNow: onEveryNth }
       hindsight.writeWhen.writeLineNow.bind(hindsight)
 
       // Simulate logging multiple times

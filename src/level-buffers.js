@@ -65,7 +65,7 @@ class LevelBuffers {
     return {
       maxAge: this.maxLineAgeMs,
       maxBytes: this.maxBytes,
-      maxSize: GlobalLineRingbuffer.capacity()
+      maxCount: GlobalLineRingbuffer.capacity()
     }
   }
 
@@ -161,7 +161,7 @@ class LevelBuffers {
   /**
    * Removes log lines that exceed the specified maximum line count.
    */
-  limitByMaxSize () {} // automatic for ringbufferjs, triggers an optional eviction callback on overflow
+  limitByMaxCount () {} // automatic for ringbufferjs, triggers an optional eviction callback on overflow
 
   /**
    * Removes oldest log lines that exceed the specified maximum aggregate line byte size.

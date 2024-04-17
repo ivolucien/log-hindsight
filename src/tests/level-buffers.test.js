@@ -14,7 +14,7 @@ describe('Hindsight level buffers', function () {
   beforeEach(() => {
     const { lineLimits } = getConfig(customConfig)
     Hindsight.initSingletonTracking()
-    LevelBuffers.initGlobalLineTracking(lineLimits.maxSize) // reset static line index
+    LevelBuffers.initGlobalLineTracking(lineLimits.maxCount) // reset static line index
   })
 
   it('should overwrite default write rule when provided', function () {
@@ -27,9 +27,9 @@ describe('Hindsight level buffers', function () {
     const lineLimits = {
       maxAge: 60000,
       maxBytes: 1000,
-      maxSize: 5000
+      maxCount: 5000
     }
-    LevelBuffers.initGlobalLineTracking(lineLimits.maxSize) // reset static line index
+    LevelBuffers.initGlobalLineTracking(lineLimits.maxCount) // reset static line index
 
     const hindsight = new Hindsight({ lineLimits })
     expect(hindsight.buffers.lineLimits).to.eql(lineLimits)
@@ -37,14 +37,14 @@ describe('Hindsight level buffers', function () {
 
   it('should overwrite subset of default limits, keeping default for unspecified limits', function () {
     const lineLimits = {
-      maxSize: 5000
+      maxCount: 5000
     }
-    LevelBuffers.initGlobalLineTracking(lineLimits.maxSize) // reset static line index
+    LevelBuffers.initGlobalLineTracking(lineLimits.maxCount) // reset static line index
 
     const hindsight = new Hindsight({ lineLimits })
     console.log(hindsight.buffers.lineLimits)
     expect(hindsight.buffers.lineLimits.maxAge).to.eql(envConfig.lineLimits.maxAge) // default
-    expect(hindsight.buffers.lineLimits.maxSize).to.eql(lineLimits.maxSize) // modified
+    expect(hindsight.buffers.lineLimits.maxCount).to.eql(lineLimits.maxCount) // modified
 
     expect(hindsight.writeWhen).to.eql(envConfig.writeWhen) // default
   })
@@ -98,18 +98,18 @@ describe('Hindsight level buffers', function () {
     expect(printed.some((msg) => msg.includes('fatal'))).to.be.true
   })
 
-  it('should limit the total number of log lines stored based on lineLimits.maxSize setting', function () {
-    const maxSize = 3
-    const lineLimits = { maxSize }
+  it('should limit the total number of log lines stored based on lineLimits.maxCount setting', function () {
+    const maxCount = 3
+    const lineLimits = { maxCount }
 
     const customConfig = getConfig({ lineLimits })
-    expect(customConfig.lineLimits.maxSize).to.equal(maxSize)
+    expect(customConfig.lineLimits.maxCount).to.equal(maxCount)
 
-    LevelBuffers.initGlobalLineTracking(maxSize) // reset static line index
+    LevelBuffers.initGlobalLineTracking(maxCount) // reset static line index
 
     const hindsight = new Hindsight(customConfig)
     expect(hindsight.buffers.GlobalLineRingbuffer.size()).to.equal(0)
-    expect(hindsight.buffers.GlobalLineRingbuffer.capacity()).to.equal(maxSize)
+    expect(hindsight.buffers.GlobalLineRingbuffer.capacity()).to.equal(maxCount)
 
     // Simulate logging to store lines
     hindsight.debug('First line')
@@ -118,7 +118,7 @@ describe('Hindsight level buffers', function () {
     hindsight.debug('Fourth line') // This should trigger limits
 
     // Assuming hindsight object has a method to get the current log lines count
-    expect(hindsight.buffers.GlobalLineRingbuffer.size()).to.equal(maxSize)
+    expect(hindsight.buffers.GlobalLineRingbuffer.size()).to.equal(maxCount)
   })
 
   it('should remove log lines older than lineLimits.maxAge setting', function (done) {

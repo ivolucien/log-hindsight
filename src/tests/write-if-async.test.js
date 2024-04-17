@@ -34,7 +34,7 @@ describe('Hindsight writeIf method tests', function () {
     }
     hindsight = new Hindsight({
       logger: mockLogger,
-      lineLimits: { maxAge: 1000, maxBytes: 500000, maxSize: 100 },
+      lineLimits: { maxAge: 1000, maxBytes: 500000, maxCount: 100 },
       writeWhen: { level: 'error' }
     })
     operationOrder = []

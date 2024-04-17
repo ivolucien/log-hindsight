@@ -14,7 +14,7 @@ export const defaultConfig = {
   lineLimits: {
     maxAge: 70 * 1000, // 70 seconds
     maxBytes: 100 * 1000 * 1000, // 100 MB
-    maxSize: 1000 * 1000 // 1 M lines
+    maxCount: 1000 * 1000 // 1 M lines
   },
   logger: console,
   writeWhen: { level: 'info' }
@@ -42,7 +42,7 @@ export const envConfigs = {
     lineLimits: {
       maxAge: 100,
       maxBytes: 1000,
-      maxSize: 10
+      maxCount: 10
     },
     writeWhen: { level: 'info' }
   },
@@ -55,7 +55,7 @@ export const envConfigs = {
     lineLimits: {
       maxAge: 100,
       maxBytes: 1000,
-      maxSize: 10
+      maxCount: 10
     },
     writeWhen: { level: 'info' }
   },
@@ -68,7 +68,7 @@ export const envConfigs = {
     lineLimits: {
       maxAge: 130 * 1000, // 130 seconds for extended retention period
       maxBytes: 500 * 1000 * 1000, // 500 MB
-      maxSize: 10 * 1000 * 1000 // 10 M lines
+      maxCount: 10 * 1000 * 1000 // 10 M lines
     },
     writeWhen: { level: 'error' }
   },
