@@ -19,7 +19,7 @@ describe('Hindsight instance lifecycle scenarios', function () {
     const hindsight = new Hindsight()
     for (let i = 0; i < 20; i++) {
       setTimeout(() => {
-        Hindsight.getOrCreateChild({ sessionId: `session${i}` }, hindsight)
+        Hindsight.getOrCreateChild({ perLineFields: { sessionId: `session${i}` } }, hindsight)
       }, i) // Stagger by 1ms between each instance
     }
 
@@ -35,8 +35,8 @@ describe('Hindsight instance lifecycle scenarios', function () {
 
   it('should expire all instances after maxAge', function (done) {
     const hindsight = new Hindsight()
-    Hindsight.getOrCreateChild({ sessionId: 'session1' }, hindsight)
-    Hindsight.getOrCreateChild({ sessionId: 'session2' }, hindsight)
+    Hindsight.getOrCreateChild({ perLineFields: { sessionId: 'session1' } }, hindsight)
+    Hindsight.getOrCreateChild({ perLineFields: { sessionId: 'session2' } }, hindsight)
 
     let instances = Hindsight.getInstances()
     expect(instances.size).to.equal(3) // parent + 2 children
@@ -52,8 +52,8 @@ describe('Hindsight instance lifecycle scenarios', function () {
 
   it('should correctly generate child instances from top-level instances', function () {
     const parent = new Hindsight()
-    const child1 = parent.getOrCreateChild({ sessionId: 'child1' })
-    const child2 = parent.getOrCreateChild({ sessionId: 'child2' })
+    const child1 = parent.getOrCreateChild({ perLineFields: { sessionId: 'child1' } })
+    const child2 = parent.getOrCreateChild({ perLineFields: { sessionId: 'child2' } })
 
     const instances = Hindsight.getInstances()
     expect(instances.get(makeInstanceKey('child1'))).to.equal(child1)
@@ -69,7 +69,7 @@ describe('Hindsight instance lifecycle scenarios', function () {
     const hindsight = new Hindsight({ ...testConfig, perLineFields: { sessionId: 'parent' } })
     for (let i = 1; i <= childCount; i++) {
       setTimeout(() => {
-        Hindsight.getOrCreateChild({ sessionId: `session${i}` }, hindsight)
+        Hindsight.getOrCreateChild({ perLineFields: { sessionId: `session${i}` } }, hindsight)
       }, 50) // async creation
     }
 

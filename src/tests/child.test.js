@@ -49,15 +49,15 @@ describe('Hindsight child tests', function () {
   describe('Hindsight getOrCreateChild Tests', function () {
     it('should return the same instance for the same perLineFields', function () {
       const perLineFields = { key: 'value' }
-      const child1 = Hindsight.getOrCreateChild(perLineFields, originalHindsight)
-      const child2 = Hindsight.getOrCreateChild(perLineFields, originalHindsight)
+      const child1 = Hindsight.getOrCreateChild({ perLineFields }, originalHindsight)
+      const child2 = Hindsight.getOrCreateChild({ perLineFields }, originalHindsight)
 
       expect(child1).to.equal(child2)
     })
 
     it('should return different instances for different perLineFields', function () {
-      const child1 = Hindsight.getOrCreateChild({ key: 'value1' }, originalHindsight)
-      const child2 = Hindsight.getOrCreateChild({ key: 'value2' }, originalHindsight)
+      const child1 = Hindsight.getOrCreateChild({ perLineFields: { key: 'value1' } }, originalHindsight)
+      const child2 = Hindsight.getOrCreateChild({ perLineFields: { key: 'value2' } }, originalHindsight)
 
       expect(child1).to.not.equal(child2)
     })

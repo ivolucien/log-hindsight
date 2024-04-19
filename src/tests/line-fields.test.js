@@ -40,7 +40,7 @@ describe('Hindsight perLineFields handling tests', function () {
 
   it('should include perLineFields in the final payload', async function () {
     const perLineFields = { userId: 'user123', sessionId: 'session456' }
-    hindsight = new Hindsight({ writeWhen: { level: 'info' } }, perLineFields)
+    hindsight = new Hindsight({ writeWhen: { level: 'info' }, perLineFields })
     hindsight._logIntake(
       { name: 'trace' },
       ['User action log']
@@ -50,13 +50,14 @@ describe('Hindsight perLineFields handling tests', function () {
     expect(testBuffer.size).to.equal(1)
     expectValidLogLine(testBuffer, {
       context: { sequence: 0 },
-      payload: ['User action log']
-    }, perLineFields)
+      payload: ['User action log'],
+      perLineFields
+    })
   })
 
   it('should applly perLineFields to multiple log lines', function () {
     const perLineFields = { userId: 'user789', sessionId: 'session101' }
-    hindsight = new Hindsight({ writeWhen: { level: 'warn' } }, perLineFields)
+    hindsight = new Hindsight({ writeWhen: { level: 'warn' }, perLineFields })
 
     hindsight._logIntake({ name: 'debug' }, ['First log message'])
     hindsight._logIntake({ name: 'info' }, ['Info log message'])
@@ -66,19 +67,21 @@ describe('Hindsight perLineFields handling tests', function () {
 
     expectValidLogLine(debugBuffer, {
       context: { sequence: 0 },
-      payload: ['First log message']
-    }, perLineFields)
+      payload: ['First log message'],
+      perLineFields
+    })
 
     expectValidLogLine(infoBuffer, {
       context: { sequence: 0 },
-      payload: ['Info log message']
-    }, perLineFields)
+      payload: ['Info log message'],
+      perLineFields
+    })
   })
 
   it('should allow child loggers to inherit and extend parent perLineFields', function () {
     const parentPerLineFields = { userId: 'userABC' }
     const childPerLineFields = { sessionId: 'sessionXYZ' }
-    const parentHindsight = new Hindsight({}, parentPerLineFields)
+    const parentHindsight = new Hindsight({ perLineFields: parentPerLineFields })
     hindsight = parentHindsight.child({ perLineFields: childPerLineFields })
 
     hindsight._logIntake({ name: 'trace' }, ['Child logger message'])
@@ -86,14 +89,15 @@ describe('Hindsight perLineFields handling tests', function () {
     const testBuffer = expectValidLogBuffer(hindsight, 'trace')
     expectValidLogLine(testBuffer, {
       context: { sequence: 0 },
-      payload: ['Child logger message']
-    }, { ...parentPerLineFields, ...childPerLineFields })
+      payload: ['Child logger message'],
+      perLineFields: { ...parentPerLineFields, ...childPerLineFields }
+    })
   })
 
   it('should use child perLineFields property value if also defined on parent', function () {
     const parentPerLineFields = { userId: 'userABC', sessionId: 'session123' }
     const childPerLineFields = { sessionId: 'sessionXYZ' }
-    const parentHindsight = new Hindsight({}, parentPerLineFields)
+    const parentHindsight = new Hindsight({ perLineFields: parentPerLineFields })
     hindsight = parentHindsight.child({ perLineFields: childPerLineFields })
 
     hindsight.trace('Another child logger message')
@@ -101,33 +105,34 @@ describe('Hindsight perLineFields handling tests', function () {
     const testBuffer = expectValidLogBuffer(hindsight, 'trace')
     expectValidLogLine(testBuffer, {
       context: { sequence: 0 },
-      payload: ['Another child logger message']
-    }, { ...parentPerLineFields, sessionId: 'sessionXYZ' })
+      payload: ['Another child logger message'],
+      perLineFields: { ...parentPerLineFields, sessionId: 'sessionXYZ' }
+    })
   })
 
   describe('when passed the logger module itself', function () {
     const perLineFields = { userId: 'user123', sessionId: 'session456', name: 'moduleTest' }
 
     it('should store and retrieve perLineFields for console', function () {
-      hindsight = new Hindsight({ logger: console, writeWhen: { level: 'info' } }, perLineFields)
+      hindsight = new Hindsight({ logger: console, writeWhen: { level: 'info' }, perLineFields })
 
       expect(hindsight.adapter.perLineFields).to.deep.eql(perLineFields)
     })
 
     it('should pass through the perLineFields to winston instance', function () {
-      hindsight = new Hindsight({ logger: winston, writeWhen: { level: 'info' } }, perLineFields)
+      hindsight = new Hindsight({ logger: winston, writeWhen: { level: 'info' }, perLineFields })
 
       expect(hindsight.adapter.perLineFields).to.equal(perLineFields)
     })
 
     it('should pass through the perLineFields to bunyan instance', function () {
-      hindsight = new Hindsight({ logger: bunyan, writeWhen: { level: 'info' } }, perLineFields)
+      hindsight = new Hindsight({ logger: bunyan, writeWhen: { level: 'info' }, perLineFields })
 
       expect(hindsight.adapter.perLineFields).to.include(perLineFields)
     })
 
     it('should pass through the perLineFields to pino instance', function () {
-      hindsight = new Hindsight({ logger: pino, writeWhen: { level: 'info' } }, perLineFields)
+      hindsight = new Hindsight({ logger: pino, writeWhen: { level: 'info' }, perLineFields })
 
       expect(hindsight.adapter.perLineFields).to.eql(perLineFields)
     })
@@ -140,7 +145,7 @@ describe('Hindsight perLineFields handling tests', function () {
 
     it('should pass through the perLineFields to winston instance', function () {
       const logger = winston.createLogger({ defaultMeta: perLineFields })
-      hindsight = new Hindsight({ logger, writeWhen: { level: 'info' } }, perLineFields)
+      hindsight = new Hindsight({ logger, writeWhen: { level: 'info' }, perLineFields })
 
       expect(hindsight.adapter.perLineFields).to.equal(perLineFields)
     })
@@ -148,14 +153,14 @@ describe('Hindsight perLineFields handling tests', function () {
     it('should pass through the perLineFields to bunyan instance', function () {
       const logger = bunyan(perLineFields)
       const { name, ...sansName } = perLineFields
-      hindsight = new Hindsight({ logger, writeWhen: { level: 'info' } }, sansName)
+      hindsight = new Hindsight({ logger, writeWhen: { level: 'info' }, perLineFields: sansName })
 
       expect(hindsight.adapter.perLineFields).to.include(perLineFields)
     })
 
     it('should pass through the perLineFields to pino instance', function () {
       const logger = pino()
-      hindsight = new Hindsight({ logger, writeWhen: { level: 'info' } }, perLineFields)
+      hindsight = new Hindsight({ logger, writeWhen: { level: 'info' }, perLineFields })
       console.log({ winston: winston.levels, pino: logger.pino, bunyan: bunyan.levels, console: console.lablels })
 
       expect(hindsight.adapter.perLineFields).to.eql(perLineFields)

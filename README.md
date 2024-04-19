@@ -1,5 +1,5 @@
 # log-hindsight
-log-hindsight adds retroactive and conditional logic to standard loggers, allowing you to retroactively trigger what would have been logged at more detailed log level, such as after an error, to perform custom data filtering, or most custom logic you might need.
+log-hindsight adds retroactive and conditional logic to standard loggers, allowing you to retroactively trigger what would have been logged at more detailed log level, such as after an error, to perform custom data filtering, or most custom logging logic you might need.
 
 **NOT Production Ready** At this pre-alpha stage log-hindsight supports basic functions for a few popular logger modules, but has memory use and functional issues that need to be addressed before it can be used in production. It is not yet published to npm.
 
@@ -97,11 +97,11 @@ For distributed systems it's valuable to implement session affinity to amplify t
 
 ```javascript
 // child logger created for the first log call for this session
-const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' })
+const childLogger = Hindsight.getOrCreateChild({ perLineFields: { sessionId: 'unique-id-1' } })
 
 <later...>
 // a separate call processing that same session, gets the same child logger (if within the same process)
-const childLogger = Hindsight.getOrCreateChild({ sessionId: 'unique-session-1' })
+const childLogger = Hindsight.getOrCreateChild({ perLineFields: { sessionId: 'unique-id-1' } })
 ```
 
 ## Monitoring log-hindsight

@@ -19,10 +19,10 @@ describe('Hindsight Instance Lifecycle Management with QuickLRU', function () {
   })
 
   it('should correctly create and retrieve instances', function () {
-    const instance1 = Hindsight.getOrCreateChild(testPerLineFields, hindsight)
+    const instance1 = Hindsight.getOrCreateChild({ perLineFields: testPerLineFields }, hindsight)
     expect(instance1).to.be.instanceOf(Hindsight)
 
-    const instance2 = Hindsight.getOrCreateChild(testPerLineFields, hindsight)
+    const instance2 = Hindsight.getOrCreateChild({ perLineFields: testPerLineFields }, hindsight)
     expect(instance1).to.equal(instance2) // Should retrieve the same instance
   })
 
@@ -30,15 +30,15 @@ describe('Hindsight Instance Lifecycle Management with QuickLRU', function () {
     // Configure Hindsight with a small maxSize for testing
     Hindsight.initSingletonTracking({ maxSize: 2 })
 
-    const instance1 = Hindsight.getOrCreateChild(testPerLineFields, hindsight)
-    Hindsight.getOrCreateChild(testPerLineFields2, hindsight)
+    const instance1 = Hindsight.getOrCreateChild({ perLineFields: testPerLineFields }, hindsight)
+    Hindsight.getOrCreateChild({ perLineFields: testPerLineFields2 }, hindsight)
 
     // Access instance1 to make it recently used
-    Hindsight.getOrCreateChild(testPerLineFields, hindsight)
+    Hindsight.getOrCreateChild({ perLineFields: testPerLineFields }, hindsight)
 
     // Add a new instance to trigger eviction
     const testPerLineFields3 = { sessionId: 'testSession3' }
-    const instance3 = Hindsight.getOrCreateChild(testPerLineFields3, hindsight)
+    const instance3 = Hindsight.getOrCreateChild({ perLineFields: testPerLineFields3 }, hindsight)
 
     instances = Hindsight.getInstances()
     console.log({ maxSize: instances.maxSize, size: instances.size })
@@ -54,10 +54,10 @@ describe('Hindsight Instance Lifecycle Management with QuickLRU', function () {
     // Configure Hindsight with a small maxAge for testing
     Hindsight.initSingletonTracking({ maxSize: 5, maxAge: 100 })
 
-    Hindsight.getOrCreateChild(testPerLineFields, hindsight) // instance 1
+    Hindsight.getOrCreateChild({ perLineFields: testPerLineFields }, hindsight) // instance 1
 
     setTimeout(() => {
-      const instance2 = Hindsight.getOrCreateChild(testPerLineFields2, hindsight)
+      const instance2 = Hindsight.getOrCreateChild({ perLineFields: testPerLineFields2 }, hindsight)
       instances = Hindsight.getInstances()
       expect(instances.has(makeKey(testPerLineFields))).to.be.false // instance1 should be evicted
 
@@ -71,15 +71,15 @@ describe('Hindsight Instance Lifecycle Management with QuickLRU', function () {
     // Configure Hindsight with a small maxSize for testing
     Hindsight.initSingletonTracking({ maxSize: 2 })
 
-    const instance1 = Hindsight.getOrCreateChild(testPerLineFields, hindsight)
-    Hindsight.getOrCreateChild(testPerLineFields2, hindsight)
+    const instance1 = Hindsight.getOrCreateChild({ perLineFields: testPerLineFields }, hindsight)
+    Hindsight.getOrCreateChild({ perLineFields: testPerLineFields2 }, hindsight)
 
     // Access instance1 to make it recently used
-    Hindsight.getOrCreateChild(testPerLineFields, hindsight)
+    Hindsight.getOrCreateChild({ perLineFields: testPerLineFields }, hindsight)
 
     // Add a new instance to trigger eviction
     const testPerLineFields3 = { sessionId: 'testSession3' }
-    const instance3 = Hindsight.getOrCreateChild(testPerLineFields3, hindsight)
+    const instance3 = Hindsight.getOrCreateChild({ perLineFields: testPerLineFields3 }, hindsight)
 
     instances = Hindsight.getInstances()
     expect(instances.has(makeKey(testPerLineFields))).to.be.true

@@ -51,14 +51,15 @@ export default class Hindsight {
     return JSON.stringify(perLineFields)
   }
 
-  static getOrCreateChild (perLineFields, parentHindsight) {
+  static getOrCreateChild ({ perLineFields }, parentHindsight) {
     const indexKey = Hindsight.getInstanceIndexString(perLineFields)
     trace('getOrCreateChild called', { indexKey, perLineFields })
     const existingInstance = GlobalHindsightInstances.get(indexKey)
     return existingInstance || parentHindsight.child({ perLineFields })
   }
 
-  constructor (config = {}, perLineFields = {}) {
+  constructor (config = {}) {
+    const { perLineFields } = config || {}
     const { lineLimits, logger, writeWhen } = getConfig(config)
     trace('Hindsight constructor called', { lineLimits, writeWhen, perLineFields })
 
@@ -84,8 +85,8 @@ export default class Hindsight {
     GlobalHindsightInstances.set(instanceSignature, this) // add to instances map?
   }
 
-  getOrCreateChild (perLineFields) {
-    return Hindsight.getOrCreateChild(perLineFields, this)
+  getOrCreateChild (...args) {
+    return Hindsight.getOrCreateChild(...args, this)
   }
 
   /**
@@ -107,7 +108,7 @@ export default class Hindsight {
       logger: innerChild,
       writeWhen: combinedWriteWhen
     }
-    return new Hindsight(childConfig, combinedFields)
+    return new Hindsight({ ...childConfig, perLineFields: combinedFields })
   }
 
   toInt (level) {
@@ -289,6 +290,7 @@ export default class Hindsight {
       levelLinesBuffered: buffer.size,
       levelLinesWritten: this[levelName].writeCounter,
       level: levelName,
+      perLineFields: this.perLineFields,
       timestamp: context.timestamp,
       estimatedLineBytes: context.lineBytes
     }
