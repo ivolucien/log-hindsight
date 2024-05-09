@@ -40,6 +40,7 @@ const requiredMethods = ['debug', 'info', 'warn', 'error']
 
 class LogAdapter {
   logger
+  proxyMethods = {}
   lineFields
 
   static validateLogger (logger) {
@@ -103,9 +104,14 @@ class LogAdapter {
         // Use the encapsulated method to determine the correct method name or function
         const methodName = this._resolveMethodName(prop)
 
+        if (this.proxyMethods[methodName]) {
+          return this.proxyMethods[methodName]
+        }
         if (methodName) {
-          return (...args) => this.logger[methodName](...args)
-        } else if (typeof target[prop] === 'function') {
+          this.proxyMethods[methodName] = (...args) => this.logger[methodName](...args)
+          return this.proxyMethods[methodName]
+        }
+        if (typeof target[prop] === 'function') {
           // Ensure methods on the LogAdapter itself are correctly bound to the LogAdapter instance
           return target[prop].bind(target)
         } else if (prop in target) {
