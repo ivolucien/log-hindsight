@@ -7,7 +7,7 @@ describe('Hindsight getter tests', function () {
       const hindsight = new Hindsight()
 
       hindsight.adapter.levelNames.forEach((name) => {
-        expect(hindsight.buffers.get(name)).to.include.keys('index', 'lines')
+        expect(hindsight.buffers.getOrCreate(name)).to.include.keys('index', 'lines')
       })
     })
   })

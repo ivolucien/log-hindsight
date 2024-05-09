@@ -21,7 +21,7 @@ describe('Primary functional performance under stress configuration', function (
     originalWrite('stdout.write overridden\n')
   })
 
-  it('should handle rapid logging without significant delays', async function () {
+  it('should handle rapid logging efficiently', async function () {
     const config = { env: 'stress' } // Setup configuration
     config.writeWhen = { level: 'info' }
     const hindsight = new Hindsight(config)
@@ -38,7 +38,7 @@ describe('Primary functional performance under stress configuration', function (
     expect(duration).to.be.below(5000) // required threshold TBD, being very lenient for now
   })
 
-  it('should handle rapid buffering without significant delays', async function () {
+  it('should handle rapid buffering efficiently', async function () {
     const config = { env: 'stress' } // Setup configuration
     // writeWhen set to 'error' for stress env by default
     const hindsight = new Hindsight(config)
@@ -59,7 +59,7 @@ describe('Primary functional performance under stress configuration', function (
     expect(duration).to.be.below(5000) // required threshold TBD, being very lenient for now
   })
 
-  it('should handle rapid writes and buffering significant delays', async function () {
+  it('should handle rapid writes and buffering efficiently', async function () {
     const config = { env: 'stress' }
     config.writeWhen = { level: 'info' }
     const hindsight = new Hindsight(config)
@@ -67,7 +67,7 @@ describe('Primary functional performance under stress configuration', function (
 
     for (index = 0; index < 5000; index++) {
       for (let i = 0; i < 10; i++) {
-        hindsight.debug('Sample log entry' + index)
+        hindsight.debug('Sample log entry' + index + '.' + i)
       }
       hindsight.info('Sample warn entry' + index)
     }
@@ -79,7 +79,7 @@ describe('Primary functional performance under stress configuration', function (
 
     const infoStats = hindsight._getMetadata('info')
     console.warn('hindsight info buffer stats: ', infoStats)
-    expect(infoStats.totalLineCount).to.equal(150000)
+    expect(infoStats.totalLineCount).to.equal(150000) // includes lines from other tests
     expect(duration).to.be.below(5000) // required threshold TBD, being very lenient for now
   })
 
@@ -95,6 +95,12 @@ describe('Primary functional performance under stress configuration', function (
     console.log('Top 20 slowest tests:')
     slowestTests.forEach(test => {
       console.log(`${test[0]}: ${test[1].toFixed(2)}ms`)
+    })
+    console.log(stats, {
+      overheadMs: -1 * Math.min(performance.now() - performance.now(),
+        performance.now() - performance.now(),
+        performance.now() - performance.now()
+      )
     })
   })
 })

@@ -10,7 +10,7 @@
 
 ### Planned for v0.3.0
 - Support for on-the-fly write rule changes (like current log level)
-- Asynchronous bulk filtering and writes of historical log lines to prevent event loop lag
+- Asynchronous bulk processing and writes of historical log lines to prevent event loop lag
 - More complete testing of session-based logging and per line field handling
 - Caller supplied function to conditionally alter log lines, such as to redact sensitive data or add metadata
 - Caller supplied function to dynamically specify what lines to write or buffer

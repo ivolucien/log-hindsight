@@ -11,8 +11,8 @@ describe('Hindsight logIntake Tests', function () {
   }
 
   function expectValidLogBuffer (hsInstance, bufferName) {
-    expect(hsInstance.buffers.get(bufferName)).to.be.an('object')
-    return hsInstance.buffers.get(bufferName)
+    expect(hsInstance.buffers.getOrCreate(bufferName)).to.be.an('object')
+    return hsInstance.buffers.getOrCreate(bufferName)
   }
 
   function expectValidLogLine (logBuffer, expectedData) {
@@ -65,7 +65,7 @@ describe('Hindsight logIntake Tests', function () {
   it('should use a specific timestamp when provided', function () {
     const then = Date.now() - 1000
     const hindsight = setupLogTest({ name: 'debug', timestamp: then }, { message: 'Test log message' })
-    trace(hindsight.buffers.get('debug'))
+    trace(hindsight.buffers.getOrCreate('debug'))
 
     const testBuffer = expectValidLogBuffer(hindsight, 'debug')
     expectValidLogLine(testBuffer, {

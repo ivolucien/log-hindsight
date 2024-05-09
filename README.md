@@ -3,6 +3,8 @@ log-hindsight adds retroactive and conditional logic to standard loggers, allowi
 
 **NOT Production Ready** At this pre-alpha stage log-hindsight supports basic functions for a few popular logger modules, but has memory use and functional issues that need to be addressed before it can be used in production. It is not yet published to npm.
 
+See also: [API Documentation](API.md)
+
 ## Table of Contents
 - [Pre-Alpha Features](#pre-alpha-features)
 - [Installation](#installation)
@@ -34,7 +36,7 @@ _This is for the current state of development. It will be updated as the module 
 import Hindsight from 'log-hindsight'
 
 // Initialize Hindsight - many options are supported, see below and config.js
-// default configuration is keyed off of NODE_ENV environment variable, see config.js
+// default configuration is keyed off of NODE_ENV environment variable
 const logBuffer = new Hindsight()
 
 // Log messages
@@ -44,7 +46,7 @@ logBuffer.trace('Starting work...') // Buffered for possible future write
 // ...later in your application
 if (errorCondition) {
   // Manually trigger a log dump after an error,
-  // Automated by setting writeWhen.writeLineNow option to an onError function, example in conditions.js
+  // Automated by setting the writeWhen.writeLineNow option to an onError function, example in conditions.js
 
   logBuffer.writeIf('trace') // Write detailed log lines as context for the error
   logBuffer.error(new Error(errorCondition)) // Written immediately by default log level

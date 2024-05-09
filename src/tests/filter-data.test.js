@@ -12,7 +12,7 @@ describe('Hindsight filterData functionality', () => {
     const originalArgs = [{ nested: { key: 'value' } }, ['array'], 'string', 123]
     hindsight.debug(...originalArgs)
 
-    const bufferedLine = hindsight.buffers.get('debug').get(0)
+    const bufferedLine = hindsight.buffers.getOrCreate('debug').get(0)
 
     expect(bufferedLine.payload).to.eql(originalArgs) // Checks for deep equality in value
     expect(bufferedLine.payload[0]).to.not.equal(originalArgs[0]) // top level params cloned
@@ -30,7 +30,7 @@ describe('Hindsight filterData functionality', () => {
     const originalArgs = ['first', 'second', 123]
     hindsight.debug(...originalArgs)
 
-    const bufferedLine = hindsight.buffers.get('debug').get(0)
+    const bufferedLine = hindsight.buffers.getOrCreate('debug').get(0)
     expect(bufferedLine.payload).to.eql(['FIRST', 'SECOND', 123]) // Value equality after transformation
   })
 
@@ -50,7 +50,7 @@ describe('Hindsight filterData functionality', () => {
     const originalArgs = [{ key: 'value' }, ['array'], 'string']
     hindsight.debug(...originalArgs)
 
-    const bufferedLine = hindsight.buffers.get('debug').get(0)
+    const bufferedLine = hindsight.buffers.getOrCreate('debug').get(0)
     expect(bufferedLine.payload[0]).to.eql({ key: 'value', filtered: true }) // Checks modified object for value equality
     expect(bufferedLine.payload[1]).to.equal(originalArgs[1]) // Reference equality for arrays
     expect(bufferedLine.payload[2]).to.equal(originalArgs[2]) // Reference equality for strings

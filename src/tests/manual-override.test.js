@@ -25,7 +25,7 @@ describe('Hindsight applyLineLimits Tests', function () {
     }
 
     // Check if the number of log lines are limited to 5
-    const buffer = hindsight.buffers.get('debug')
+    const buffer = hindsight.buffers.getOrCreate('debug')
     const expectedBufferKeys = hindsight.buffers.lineLimits.maxCount
     trace({ bufferKeys: buffer.lines.keys() })
     expect(buffer.size).to.be.at.most(expectedBufferKeys)
@@ -41,7 +41,7 @@ describe('Hindsight applyLineLimits Tests', function () {
     // Wait for 10ms and then apply lineLimits
     setTimeout(() => {
       hindsight.applyLineLimits()
-      const buffer = hindsight.buffers.get('debug', 'test')
+      const buffer = hindsight.buffers.getOrCreate('debug', 'test')
 
       // Check if the old log line is removed
       expect(buffer.index).to.equal(2) // 2 log lines and has been incremented afterwards
@@ -58,8 +58,8 @@ describe('Hindsight applyLineLimits Tests', function () {
     hindsight._logIntake({ name: 'info', sessionId: 'test' }, ['Deferred log line'])
     hindsight._logIntake({ name: 'warn', sessionId: 'test' }, ['Immediate log line'])
 
-    const infoBuffer = hindsight.buffers.get('info', 'test')
-    const warnBuffer = hindsight.buffers.get('warn', 'test')
+    const infoBuffer = hindsight.buffers.getOrCreate('info', 'test')
+    const warnBuffer = hindsight.buffers.getOrCreate('warn', 'test')
 
     trace({ GlobalLineRingbufferSize: hindsight.buffers.GlobalLineRingbuffer.size() })
     expect(infoBuffer.get(0)).to.exist // 'info' is below 'warn', so it should be deferred

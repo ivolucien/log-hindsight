@@ -87,10 +87,10 @@ describe('Hindsight level buffers', function () {
     hindsight.error('error message should be logged.')
     hindsight.fatal('fatal message should be logged.')
 
-    const errorBuffer = hindsight.buffers.get('error')
+    const errorBuffer = hindsight.buffers.getOrCreate('error')
     expect(errorBuffer[0]).to.not.exist // printed, not buffered
 
-    const fatalBuffer = hindsight.buffers.get('fatal')
+    const fatalBuffer = hindsight.buffers.getOrCreate('fatal')
     expect(fatalBuffer[0]).to.not.exist // printed, not buffered
 
     expect(printed).to.have.lengthOf(2)

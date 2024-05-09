@@ -16,8 +16,8 @@ describe('Hindsight perLineFields handling tests', function () {
   })
 
   function expectValidLogBuffer (hsInstance, bufferName) {
-    expect(hsInstance.buffers.get(bufferName)).to.be.an('object')
-    return hsInstance.buffers.get(bufferName)
+    expect(hsInstance.buffers.getOrCreate(bufferName)).to.be.an('object')
+    return hsInstance.buffers.getOrCreate(bufferName)
   }
 
   function expectValidLogLine (logBuffer, expectedData, expectedPerLineFields) {

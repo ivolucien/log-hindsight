@@ -107,10 +107,10 @@ describe('hindsight.writeIf() Tests', function () {
     hindsight.trace('Originally 2nd')
 
     const then = Date.now() - 1000
-    expect(hindsight.buffers.get('trace')).to.be.an('object')
+    expect(hindsight.buffers.getOrCreate('trace')).to.be.an('object')
 
-    hindsight.buffers.get('trace').lines.get(0).context.timestamp = then
-    hindsight.buffers.get('debug').lines.get(0).context.timestamp = now
+    hindsight.buffers.getOrCreate('trace').lines.get(0).context.timestamp = then
+    hindsight.buffers.getOrCreate('debug').lines.get(0).context.timestamp = now
     hindsight.writeIf('trace', () => true)
 
     await waitForBuffersMutexUnlock(hindsight, () => {
@@ -132,7 +132,7 @@ describe('hindsight.writeIf() Tests', function () {
     hindsight.writeIf('trace', spy)
 
     await waitForBuffersMutexUnlock(hindsight, () => {
-      const buffer = hindsight.buffers.get('trace')
+      const buffer = hindsight.buffers.getOrCreate('trace')
       expect(buffer.size).to.equal(2)
     })
   })

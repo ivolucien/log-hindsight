@@ -10,7 +10,7 @@ describe('Hindsight Constructor Tests', function () {
 
     instance.adapter.logMethods.forEach((method) => {
       expect(instance[method.name]).to.be.a('function')
-      expect(instance.buffers.get(method.name)).to.be.an('object')
+      expect(instance.buffers.getOrCreate(method.name)).to.be.an('object')
     })
     return instance
   }
