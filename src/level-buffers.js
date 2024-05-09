@@ -5,8 +5,8 @@ import LineBuffer from './line-buffer.js'
 import getScopedLoggers from './internal-loggers.js'
 const { trace } = getScopedLoggers('level-buffers')
 
-// aggregate line tracking across all levels, for implementing global limits
-let GlobalLineRingbuffer
+// aggregate line tracking across all buffers, for implementing global limits
+let GlobalLineRingbuffer // call initGlobalLineTracking() to reset for tests
 
 // rough estimate of the total byte size of all log lines, likely to be lower than actual
 let TotalEstimatedLineBytes = 0
@@ -75,7 +75,7 @@ class LevelBuffers {
    * @param {string} levelName - The name of the log level.
    * @returns {object} - The buffer object for the specified level name.
    */
-  get (levelName) {
+  getOrCreate (levelName) {
     if (!this.levels[levelName]) {
       this.levels[levelName] = new LineBuffer()
     }
@@ -91,7 +91,7 @@ class LevelBuffers {
   addLine (levelName, line) {
     trace('addLine called')
 
-    const buffer = this.get(levelName)
+    const buffer = this.getOrCreate(levelName)
     line.context.buffer = buffer // Add buffer and sequence to context as a back-reference when deleting lines
     line.context.sequence = buffer.add(line)
 

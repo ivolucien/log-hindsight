@@ -4,6 +4,7 @@
  *
  * These can be overridden via the Hindsight constructor parameters
  *
+ * NOTE: when configurations are derived, each config property is shallow copied
  */
 
 export const defaultConfig = {
@@ -20,7 +21,7 @@ export const defaultConfig = {
   writeWhen: { level: 'info' }
 }
 
-// spell out supported properties, the || syntax prevents falsy caller override values
+// caller param overrides env config, shallow clones 2 properties deep
 export function getConfig (caller = {}, env = process.env.NODE_ENV) {
   const envConfig = envConfigs[env] || envConfigs.production
   const config = {

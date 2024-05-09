@@ -1,4 +1,3 @@
-// ./src/conditions.js
 import getScopedLoggers from './internal-loggers.js'
 const { trace } = getScopedLoggers('conditions')
 

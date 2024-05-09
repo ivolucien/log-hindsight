@@ -143,9 +143,9 @@ class LogAdapter {
     return undefined
   }
 
-  get logLevels () { return { ...LOG_LEVELS } }
-  get levelLookup () { return { ...LEVEL_LOOKUP } }
-  get levelFallback () { return { ...LEVEL_FALLBACK } }
+  get logLevels () { return LOG_LEVELS }
+  get levelLookup () { return LEVEL_LOOKUP }
+  get levelFallback () { return LEVEL_FALLBACK }
   get levelNames () { return LEVEL_NAMES } /**
 
   /**

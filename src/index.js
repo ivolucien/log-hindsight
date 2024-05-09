@@ -149,21 +149,20 @@ export default class Hindsight {
   }
 
   async _pushMatchingLines (levelName, writeLineNow, linesOut) {
-    const buffer = this.buffers.get(levelName)
+    const buffer = this.buffers.getOrCreate(levelName)
     let batchCount = 1
 
+    trace(`writeIf matching for '${levelName}'`)
     for (const [/* index */, line] of buffer.lines) { // destructure, ignore index here
-      trace('writeIf line')
-
       if (line != null && line.context != null && line.context.written !== true) {
         const metadata = this._getMetadata(levelName, line.context)
 
         if (await writeLineNow({ metadata, payload: line.payload })) {
-          line.context.name = levelName // add name to context for writing chronologically across levels
           linesOut.push(line)
         }
       }
       if (batchCount++ % this.batchSize === 0) {
+        trace('writeIf matching  batch', { batchCount })
         await this._batchYield()
       }
     }
@@ -204,7 +203,6 @@ export default class Hindsight {
 
           // walk through level buffers in order to identify lines to write
           for (const levelName of this.adapter.levelNames) {
-            trace(`writeIf '${levelName}' loop`)
             const meetsThreshold = this.toInt(levelName) >= this.toInt(levelCutoff)
             if (!meetsThreshold) {
               trace('level below threshold')
@@ -215,14 +213,15 @@ export default class Hindsight {
           }
           // Sort lines by line.context.timestamp in ascending order
           trace({ linesOutCount: linesOut.length })
-          linesOut.sort((a, b) => a.context.timestamp - b.context.timestamp) // is this efficient enough?
+          // todo: review performance of sort for large sets of lines
+          linesOut.sort((a, b) => a.context.timestamp - b.context.timestamp) // reasonably efficient
 
           for (const line of linesOut) {
             this._writeLine(line.context.name, line.context, line.payload)
             this.buffers.deleteLine(line)
 
             if (batchCount++ % this.batchSize === 0) {
-              info('Batch writeIf', { batchCount })
+              trace('Batch writeIf', { batchCount })
               await this._batchYield(batchCount++) // only await yield at batch end
             }
           }
@@ -231,6 +230,7 @@ export default class Hindsight {
         error('Error in writeIf call, some lines might not have been written')
         error(err)
       }
+      // review for use of a finally clause if this is extended to use external resources
     })()
   }
 
@@ -282,8 +282,8 @@ export default class Hindsight {
     }
   }
 
-  _getMetadata (levelName, context) {
-    const buffer = this.buffers.get(levelName)
+  _getMetadata (levelName, context = {}) {
+    const buffer = this.buffers.getOrCreate(levelName)
     const metadata = {
       estimatedBufferBytes: this.buffers.estimatedBytes,
       totalLineCount: this.totalLineCount,
@@ -358,13 +358,16 @@ export default class Hindsight {
   }
 
   async _bufferLine (name, context, payload) {
-    trace('_bufferLine called', name, context)
     const filteredArgs = this.filterData(payload)
     const logEntry = {
       context: { name, ...context },
       payload: filteredArgs
     }
     this.buffers.addLine(name, logEntry)
+    if (this._bufferCount++ % 100 !== 0) {
+      return
+    }
+    trace('_bufferLine was called', name, context)
     this.applyLineLimits()
   }
 }
