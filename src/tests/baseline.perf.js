@@ -6,6 +6,16 @@ import { performance } from 'perf_hooks'
 const performanceResults = []
 const originalWrite = process.stdout.write.bind(process.stdout)
 
+const stats = { log: {}, buffer: {}, mixed: {} }
+let lastNow
+
+function updateStats (testName) {
+  const now = performance.now()
+  stats[testName].maxMs = Math.max(stats[testName].maxMs || 0, now - (lastNow || now))
+  stats[testName].minMs = Math.min(stats[testName].minMs || 100, now - (lastNow || 100))
+  lastNow = now
+}
+
 describe('Primary functional performance under stress configuration', function () {
   let index = 0
   this.timeout(10000) // Set a higher timeout if necessary
@@ -29,6 +39,8 @@ describe('Primary functional performance under stress configuration', function (
 
     for (index = 0; index < 10000; index++) {
       hindsight.info('Sample log entry' + index)
+
+      updateStats('log')
     }
 
     const endTime = performance.now()
@@ -46,6 +58,7 @@ describe('Primary functional performance under stress configuration', function (
 
     for (index = 0; index < 100000; index++) {
       hindsight.info('Sample log entry' + index)
+      updateStats('buffer')
     }
 
     const endTime = performance.now()

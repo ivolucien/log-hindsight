@@ -4,6 +4,8 @@ logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+prof*.txt
+*.0x
 
 # Author
 tmp
