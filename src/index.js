@@ -39,8 +39,10 @@ export default class Hindsight {
 
   _writeWhen = {}
 
-  static initSingletonTracking (instanceLimits = getConfig().instanceLimits) {
-    GlobalHindsightInstances = new QuickLRU(instanceLimits) // can use in tests to reset state
+  static initSingletonTracking (instanceLimits) {
+    const limits = { ...getConfig().instanceLimits, ...instanceLimits }
+    info('Global Hindsight instance tracking initialized', { limits })
+    GlobalHindsightInstances = new QuickLRU(limits) // can use in tests to reset state
   }
 
   static getInstances () { // for manual instance management and test use

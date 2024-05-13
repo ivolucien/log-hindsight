@@ -14,8 +14,8 @@ export const defaultConfig = {
   },
   lineLimits: {
     maxAge: 70 * 1000, // 70 seconds
-    maxBytes: 100 * 1000 * 1000, // 100 MB
-    maxCount: 1000 * 1000 // 1 M lines
+    maxBytes: 0, // unlimited
+    maxCount: 1000 * 1000 // 1 M lines, NOTE: a ring buffer is used, so this must have a limit
   },
   logger: console,
   writeWhen: { level: 'info' }
@@ -25,8 +25,8 @@ export const defaultConfig = {
 export function getConfig (caller = {}, env = process.env.NODE_ENV) {
   const envConfig = envConfigs[env] || envConfigs.production
   const config = {
-    instanceLimits: caller.instanceLimits || envConfig.instanceLimits,
     logger: caller.logger || envConfig.logger,
+    instanceLimits: { ...envConfig.instanceLimits, ...caller?.instanceLimits },
     lineLimits: { ...envConfig.lineLimits, ...caller?.lineLimits },
     writeWhen: { ...envConfig.writeWhen, ...caller?.writeWhen }
   }
@@ -68,7 +68,7 @@ export const envConfigs = {
     },
     lineLimits: {
       maxAge: 130 * 1000, // 130 seconds for extended retention period
-      maxBytes: 500 * 1000 * 1000, // 500 MB
+      maxBytes: 0, // unlimited
       maxCount: 10 * 1000 * 1000 // 10 M lines
     },
     writeWhen: { level: 'error' }

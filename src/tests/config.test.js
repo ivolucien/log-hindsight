@@ -43,7 +43,7 @@ describe('Environment configuration validation tests', function () {
           .to.be.a('number').that.is.at.least(2)
           .and.is.at.most(MAX_AGE_MS_LIMIT)
         expect(config).to.have.nested.property('lineLimits.maxBytes')
-          .to.be.a('number').that.is.at.least(2)
+          .to.be.a('number').that.is.at.least(['stress', 'production'].includes(env) ? 0 : 2)
           .and.is.at.most(MAX_BYTE_LIMIT)
       })
 
