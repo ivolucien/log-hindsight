@@ -62,10 +62,18 @@ export default class Hindsight {
   }
 
   static getOrCreateChild ({ perLineFields }, parentHindsight) {
+    if (!GlobalHindsightInstances) {
+      Hindsight.initSingletonTracking()
+    }
     const indexKey = Hindsight.getInstanceIndexString(perLineFields)
     trace('getOrCreateChild called', { indexKey, perLineFields })
-    const existingInstance = GlobalHindsightInstances.get(indexKey)
-    return existingInstance || parentHindsight.child({ perLineFields })
+    const instance = GlobalHindsightInstances.get(indexKey)
+    if (!instance) {
+      return parentHindsight
+        ? parentHindsight.child({ perLineFields }) // derived instance
+        : new Hindsight({ perLineFields }) // new instance
+    }
+    return instance
   }
 
   constructor (config = {}) {
