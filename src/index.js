@@ -53,6 +53,14 @@ export default class Hindsight {
     return JSON.stringify(perLineFields)
   }
 
+  static cleanupExpiredInstances () {
+    for (const [key, instance] of GlobalHindsightInstances) {
+      if (instance.isExpired()) {
+        GlobalHindsightInstances.delete(key);
+      }
+    }
+  }
+
   static getOrCreateChild ({ perLineFields }, parentHindsight) {
     const indexKey = Hindsight.getInstanceIndexString(perLineFields)
     trace('getOrCreateChild called', { indexKey, perLineFields })
@@ -147,7 +155,7 @@ export default class Hindsight {
 
   async _batchYield () {
     trace('batchYield called')
-    await setTimeout(0)
+    await new Promise((resolve) => setImmediate(resolve)) // yield to event loop
   }
 
   async _pushMatchingLines (levelName, writeLineNow, linesOut) {
@@ -191,13 +199,13 @@ export default class Hindsight {
    * @param {function} writeLineNow - A user-defined function that decides if each line is written.
    */
   writeIf (levelCutoff, writeLineNow = async (/* metadata, lineArgs */) => true) {
-    // NOTE: this function is intentionally not async. it does call async functions that it leaves in the background.
+    // NOTE: writeIf is intentionally not async. it does call async functions for background processing.
     trace('writeIf called', { levelCutoff })
 
     // fire and forget since it might take quite a while to complete
     ;(async () => { // must ;
       try {
-        // reserve the buffers for exclusive access
+        // reserve the buffers for exclusive access by batch processing
         await this.buffersMutex.runExclusive(async () => {
           trace('writeIf async fired to forget')
           const linesOut = []
