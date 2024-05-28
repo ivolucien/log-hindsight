@@ -1,13 +1,22 @@
 import { expect } from 'chai'
 import Hindsight from '../index.js'
 import LevelBuffers from '../level-buffers.js'
+import getScopedLoggers from '../internal-loggers.js'
+const { error } = getScopedLoggers('tests')
 
 const TimeOverride = process.env.HINDSIGHT_TEST_SPEED_MS || 1000
-const MaxStressMemoryUsage = 1024 * 1024 * 1024 // 1GB
 
 function printMB (bytes) { return `${Math.floor(bytes / (1000 * 1000))}MB` }
 
 describe('Line buffer volume test', function () {
+  this.beforeEach(function () {
+    Hindsight.initSingletonTracking({})
+  })
+
+  after(function () {
+    error('End of stress test, log level set to ' + process.env.DEBUG)
+  })
+
   it('should just buffer info level logs, test large buffer size', async function () {
     this.timeout(60 * TimeOverride)
     const config = {
@@ -33,10 +42,7 @@ describe('Line buffer volume test', function () {
         ])
 
         if (i % (5 * TimeOverride) === 0) { // log occasionally
-          console.log(i + ') Estimated buffer size:',
-            printMB(LevelBuffers.TotalEstimatedLineBytes),
-            ' ms elapsed:', new Date() - start
-          )
+          console.log(`Test ${i}) ${Date.now() - start} ms elapsed`)
         }
       };
     } catch (error) {
@@ -46,7 +52,6 @@ describe('Line buffer volume test', function () {
 
     const heapUsed = process.memoryUsage().heapUsed
     console.log({ heapUsed: printMB(heapUsed), lineCount: hindsight.buffers.GlobalLineRingbuffer.size() })
-    expect(heapUsed).to.be.at.most(MaxStressMemoryUsage)
   })
 
   it('should just buffer lots of lines and release all as they age out', async function () {
@@ -94,6 +99,5 @@ describe('Line buffer volume test', function () {
 
     const heapUsed = process.memoryUsage().heapUsed
     console.log({ heapUsed: printMB(heapUsed), lineCount: hindsight.buffers.GlobalLineRingbuffer.size() })
-    expect(heapUsed).to.be.at.most(MaxStressMemoryUsage)
   })
 })

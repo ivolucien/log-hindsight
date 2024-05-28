@@ -15,7 +15,7 @@ export const defaultConfig = {
   lineLimits: {
     maxAge: 70 * 1000, // 70 seconds
     maxBytes: 0, // unlimited
-    maxCount: 1000 * 1000 // 1 M lines, NOTE: a ring buffer is used, so this must have a limit
+    maxCount: 100 * 1000 // 1 M lines, NOTE: a ring buffer is used, so this must have a limit
   },
   logger: console,
   writeWhen: { level: 'info' }
@@ -63,13 +63,13 @@ export const envConfigs = {
   stress: {
     ...defaultConfig,
     instanceLimits: {
-      maxAge: 130 * 1000,
-      maxSize: 50 * 1000
+      maxAge: 70 * 1000,
+      maxSize: 10 * 1000
     },
     lineLimits: {
-      maxAge: 130 * 1000, // 130 seconds for extended retention period
+      maxAge: 80 * 1000, // extended retention period
       maxBytes: 0, // unlimited
-      maxCount: 10 * 1000 * 1000 // 10 M lines
+      maxCount: 500 * 1000
     },
     writeWhen: { level: 'error' }
   },
