@@ -78,15 +78,15 @@ async function runUserSession (config, logLineCount) {
 }
 
 // run the specified number of user requests over a specified duration
-async function runUserRequests (requestCount, runDuration, config) {
+async function runUserRequests (requestCount, runDuration) {
   if (requestCount <= 0 || runDuration <= 0) return // bail if nothing to do
   stats = { minGetOrCreate: 10000, maxGetOrCreate: -1, minLogLine: 10000, maxLogLine: -1 }
 
   const sessionId = generateRandomString(1)
   const startTime = Date.now()
   while (Date.now() - startTime < runDuration) {
-    const userConfig = { perLineFields: { sessionId }, ...config }
-    runUserSession(userConfig, Math.floor(Math.random() * 100) + 1, config)
+    const userConfig = { perLineFields: { sessionId } }
+    runUserSession(userConfig, Math.floor(Math.random() * 100) + 1, userConfig)
     await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 91) + 10)) // configurable?
     if (--requestCount <= 0) break
   }

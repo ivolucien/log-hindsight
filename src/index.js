@@ -1,5 +1,4 @@
 // src/index.js
-import { setTimeout } from 'timers/promises'
 import { Mutex } from 'async-mutex'
 import QuickLRU from 'quick-lru' // todo:  consider js-lru or lru-cache to externalize ttl handling
 
@@ -157,8 +156,9 @@ export default class Hindsight {
   applyLineLimits () {
     trace('applyLineLimits called')
     this.buffers.limitByMaxAge()
-    this.buffers.limitByMaxBytes()
+    this.buffers.limitByMinFreeMemory()
     this.buffers.limitByMaxCount()
+    Hindsight.cleanupExpiredInstances()
   }
 
   async _batchYield () {

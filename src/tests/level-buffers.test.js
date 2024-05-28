@@ -5,14 +5,9 @@ import LevelBuffers from '../level-buffers.js'
 
 describe('Hindsight level buffers', function () {
   const envConfig = getConfig()
-  const customConfig = {
-    lineLimits: {
-      maxBytes: 500 // Set a low byte limit for testing
-    }
-  }
 
   beforeEach(() => {
-    const { lineLimits } = getConfig(customConfig)
+    const { lineLimits } = getConfig()
     Hindsight.initSingletonTracking()
     LevelBuffers.initGlobalLineTracking(lineLimits.maxCount) // reset static line index
   })
@@ -26,7 +21,6 @@ describe('Hindsight level buffers', function () {
   it('should overwrite default lineLimits when provided', function () {
     const lineLimits = {
       maxAge: 60000,
-      maxBytes: 1000,
       maxCount: 5000
     }
     LevelBuffers.initGlobalLineTracking(lineLimits.maxCount) // reset static line index
@@ -145,28 +139,5 @@ describe('Hindsight level buffers', function () {
 
       done()
     }, 150) // Wait enough time to ensure the old line is older than maxAge
-  })
-
-  it('should remove log lines when maxBytes limit is exceeded', function () {
-    const hindsight = new Hindsight(customConfig)
-
-    expect(LevelBuffers.TotalEstimatedLineBytes).to.equal(0)
-    expect(hindsight.buffers.maxBytes).to.equal(customConfig.lineLimits.maxBytes)
-
-    // Generate log lines that collectively exceed the maxBytes limit
-    for (let i = 0; i < 10; i++) {
-      hindsight.debug(`Log line ${i} with sixty filler chars to increase line size.`)
-    }
-
-    // Apply line limits based on the current configuration
-    hindsight.applyLineLimits()
-
-    // Assert that the total estimated bytes of stored log lines is less than or equal to maxBytes
-    expect(LevelBuffers.TotalEstimatedLineBytes).to.be.at.most(customConfig.lineLimits.maxBytes)
-
-    // Assert that some log lines have been removed to respect the maxBytes limit
-    const totalLines = Object.values(hindsight.buffers.levels)
-      .reduce((acc, buffer) => acc + buffer.size, 0)
-    expect(totalLines).to.be.lessThan(10) // Less than 10 since some lines should have been removed
   })
 })

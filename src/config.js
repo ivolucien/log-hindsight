@@ -14,7 +14,6 @@ export const defaultConfig = {
   },
   lineLimits: {
     maxAge: 70 * 1000, // 70 seconds
-    maxBytes: 0, // unlimited
     maxCount: 100 * 1000 // 1 M lines, NOTE: a ring buffer is used, so this must have a limit
   },
   logger: console,
@@ -42,7 +41,6 @@ export const envConfigs = {
     },
     lineLimits: {
       maxAge: 100,
-      maxBytes: 1000,
       maxCount: 10
     },
     writeWhen: { level: 'info' }
@@ -55,7 +53,6 @@ export const envConfigs = {
     },
     lineLimits: {
       maxAge: 100,
-      maxBytes: 1000,
       maxCount: 10
     },
     writeWhen: { level: 'info' }
@@ -68,7 +65,6 @@ export const envConfigs = {
     },
     lineLimits: {
       maxAge: 80 * 1000, // extended retention period
-      maxBytes: 0, // unlimited
       maxCount: 500 * 1000
     },
     writeWhen: { level: 'error' }

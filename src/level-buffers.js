@@ -1,6 +1,7 @@
 // src/level-buffers.js
+import v8 from 'v8'
+import os from 'os'
 import RingBuffer from 'ringbufferjs' // "js" here is not a file extension
-import sizeof from 'object-sizeof'
 import LineBuffer from './line-buffer.js'
 import getScopedLoggers from './internal-loggers.js'
 const { trace } = getScopedLoggers('level-buffers')
@@ -13,18 +14,16 @@ let TotalEstimatedLineBytes = 0
 
 class LevelBuffers {
   maxLineAgeMs
-  maxBytes
 
   /**
    * Constructs a LevelBuffers object, initializing the global sequence index if required.
    * @param {Object} options - Configuration for the LevelBuffers object.
    * @param {number} options.maxLineCount - The maximum combined total line count.
    */
-  constructor ({ maxAge, maxLineCount, maxBytes = false }) {
+  constructor ({ maxAge, maxLineCount }) {
     trace('LevelBuffers constructor called')
     this.levels = {}
     this.maxLineAgeMs = maxAge
-    this.maxBytes = maxBytes
     if (GlobalLineRingbuffer == null) {
       LevelBuffers.initGlobalLineTracking(maxLineCount)
     }
@@ -64,7 +63,6 @@ class LevelBuffers {
   get lineLimits () {
     return {
       maxAge: this.maxLineAgeMs,
-      maxBytes: this.maxBytes,
       maxCount: GlobalLineRingbuffer.capacity()
     }
   }
@@ -94,19 +92,6 @@ class LevelBuffers {
     const buffer = this.getOrCreate(levelName)
     line.context.buffer = buffer // Add buffer and sequence to context as a back-reference when deleting lines
     line.context.sequence = buffer.add(line)
-
-    if (this.maxBytes > 0) {
-      try {
-        const contextSize = Object.keys(line.context).length * 8 // rough estimate of line overhead
-        line.context.lineBytes = sizeof(line.payload || []) + contextSize
-
-        TotalEstimatedLineBytes += line.context.lineBytes
-      } catch (e) {
-        console.error(e)
-        // todo: if circular reference error, use more expensive recursive sizeof with "object seen" map
-        // ignore errors from sizeof for now
-      }
-    }
 
     // todo: figure out garbage collection for expired lines and the sequence index
     GlobalLineRingbuffer.enq(line) // add to sequence index
@@ -166,13 +151,26 @@ class LevelBuffers {
   /**
    * Removes oldest log lines that exceed the specified maximum aggregate line byte size.
    */
-  limitByMaxBytes () {
-    trace('limitByMaxBytes called')
+  limitByMinFreeMemory (reservedAppBytes = 10 * 1024 * 1024, percentForHindsight = 0.5) {
+    trace('limitByMinFreeMemory called')
+
+    const { heap_size_limit: heapLimit, used_heap_size: usedHeap } = v8.getHeapStatistics()
+    const logicalHeapFree = heapLimit - usedHeap
+
+    // factor in configured limit and actual free memory
+    const maxAvailableHeap = Math.min(logicalHeapFree, os.freemem())
+
+    const bytesAvailable = maxAvailableHeap * percentForHindsight
+    if (bytesAvailable > reservedAppBytes) {
+      // there's enough free memory for the app, done here
+      return
+    }
 
     // how to prioritize which lines to remove? by level? by age? by size?
     // for now just trim the oldest lines from the sequence index
     // todo? support removal strategies like least-priority-first, completed-sessions-first, etc.
-    while (TotalEstimatedLineBytes > this.maxBytes && GlobalLineRingbuffer.size() > 0) {
+    let deqBatchCount = 200
+    while (deqBatchCount-- > 0) {
       const line = GlobalLineRingbuffer.deq()
 
       // and this also reduces the estimated byte count

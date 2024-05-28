@@ -69,7 +69,7 @@ Highly customizable, see conditions.js for examples of custom logic.
 |-------------------|---------------------------------------|------------------------------------|
 | `logger`          | Logger module used to write output    | <pre>`console`</pre> |
 | `instanceLimits`  | Max count and age of singleton loggers | <pre>`{ maxSize: 5000, maxAge: 70000 }`</pre> |
-| `lineLimits`      | Line buffer limits; count, age, bytes | <pre>`{`<br>`  maxCount: 1,000,0000,`<br>`  maxAge: 70,000,`<br>`  maxBytes: 100,000,000`<br>`}`</pre> |
+| `lineLimits`      | Line buffer limits; count, age, bytes | <pre>`{`<br>`  maxCount: 1,000,0000,`<br>`  maxAge: 70,000,`<br>`}`</pre> |
 | `filterData`      | Function to clean or transform data   | <pre>`(arrayOfArgs) => {`<br>`  /* defaults to shallow copy when buffering */`<br>`}` |
 | `writeWhen`       | Options for how to handle log lines   | <pre>`{`<br>  `level: 'error',`<br>  `writeLineNow: <see below>`<br>`}`</pre> |
 | `writeWhen.level` | Level cutoff to consider writing now  | <pre>`'error'`</pre> |

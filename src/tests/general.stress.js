@@ -45,7 +45,6 @@ describe('General Stress Test', function () {
       console.log('startUserSessions: called')
       const currentTime = Date.now()
       const elapsedTime = currentTime - startTime
-      const config = { lineLimits: { maxBytes: 500 * 1000 * 1000 } } // 500 MB overall limit
       usersStarted = Math.min(MAX_USER_COUNT, Math.floor((elapsedTime / RAMP_TIME) * MAX_USER_COUNT))
 
       for (let i = 0; i < usersStarted; i++) {
@@ -64,7 +63,7 @@ describe('General Stress Test', function () {
           if (sessionDuration > 0) {
             users[i] = { userStart: Date.now() }
             const requestCount = Math.floor(Math.random() * 200) + 1
-            runUserRequests(requestCount, sessionDuration, config) // Start user requests without awaiting
+            runUserRequests(requestCount, sessionDuration) // Start user requests without awaiting
               .then((end) => {
                 users[i].userEnd = end
               })

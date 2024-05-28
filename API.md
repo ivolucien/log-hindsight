@@ -12,7 +12,7 @@ _Constructor. All parameters are optional, per NODE_ENV defaults are listed in t
     - `instanceLimits` (Object): Specifies the maximum number of Hindsight instances.<br>
       &nbsp; &nbsp; &nbsp; &nbsp; `{ maxSize: 5000, maxAge: 70000 }`
     - `lineLimits` (Object): Defines the buffering limits for log lines, such as maximum age, count, and size in bytes.<br>
-      &nbsp; &nbsp; &nbsp; &nbsp; `{ maxCount: 100, maxAge: 10000, maxBytes: 500000 }`
+      &nbsp; &nbsp; &nbsp; &nbsp; `{ maxCount: 100, maxAge: 10000 }`
     - `logger` (Object|Function): The logging interface or factory function used for output, defaults to `console`.
     - `filterData` (Function): A function to modify or filter log data before it is buffered (optional)
     - `writeWhen` (Object): Rules for when log lines should be output immediately, see `writeIf()` below (optional)<br>
@@ -60,7 +60,6 @@ Handles buffering of log lines across different levels with constraints on age, 
   - `options` (Object): Configuration options for line buffering.
     - `maxAge` (Number): Maximum age in milliseconds before a log line is discarded.
     - `maxLineCount` (Number): Maximum number of log lines that can be buffered.
-    - `maxBytes` (Boolean|Number): Maximum bytes that can be buffered.
 
 ### LineBuffer
 
@@ -72,7 +71,7 @@ Utility class for storing log lines in a buffer.
 import Hindsight from 'hindsight';
 
 const config = {
-  lineLimits: { maxAge: 10000, maxCount: 100, maxBytes: 500000 },
+  lineLimits: { maxAge: 10000, maxCount: 1000 },
   logger: console,
   writeWhen: { level: 'error' }
 };

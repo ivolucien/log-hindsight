@@ -5,7 +5,6 @@ import Hindsight from '../index.js'
 // max values to be used as module default config values, caller can override
 const MAX_LINE_COUNT_LIMIT = 10 * 1000 * 1000 // 10 million
 const MAX_AGE_MS_LIMIT = 1000 * 60 * 60 * 24 * 30 // 30 days
-const MAX_BYTE_LIMIT = 1000 * 1000 * 1000 // 1 GB
 
 // Define required limits and requirements for *default* env config values
 const EXPECTED_LOG_LEVELS = ['trace', 'debug', 'info', 'warn', 'error']
@@ -42,15 +41,12 @@ describe('Environment configuration validation tests', function () {
         expect(config).to.have.nested.property('lineLimits.maxAge')
           .to.be.a('number').that.is.at.least(2)
           .and.is.at.most(MAX_AGE_MS_LIMIT)
-        expect(config).to.have.nested.property('lineLimits.maxBytes')
-          .to.be.a('number').that.is.at.least(['stress', 'production'].includes(env) ? 0 : 2)
-          .and.is.at.most(MAX_BYTE_LIMIT)
       })
 
       it('should override default values with manually specified config values', function () {
         const customConfig = {
-          instanceLimits: { maxSize: 100, maxAge: 200, maxBytes: 10 * 1024 },
-          lineLimits: { maxCount: 300, maxAge: 400, maxBytes: 99 * 1000 }
+          instanceLimits: { maxSize: 100, maxAge: 200 },
+          lineLimits: { maxCount: 300, maxAge: 400 }
         }
         const overriddenConfig = getConfig(customConfig, env)
 
@@ -58,7 +54,6 @@ describe('Environment configuration validation tests', function () {
         expect(overriddenConfig.instanceLimits.maxAge).to.equal(customConfig.instanceLimits.maxAge)
         expect(overriddenConfig.lineLimits.maxCount).to.equal(customConfig.lineLimits.maxCount)
         expect(overriddenConfig.lineLimits.maxAge).to.equal(customConfig.lineLimits.maxAge)
-        expect(overriddenConfig.lineLimits.maxBytes).to.equal(customConfig.lineLimits.maxBytes)
       })
 
       it('should not throw errors when creating new Hindsight objects with various config values', function () {
@@ -80,8 +75,7 @@ describe('Environment configuration validation tests', function () {
         customConfig = getConfig({ lineLimits: { maxCount: 300 } }, env)
         expect(customConfig.lineLimits).to.deep.equal({
           maxCount: 300,
-          maxAge: config.lineLimits.maxAge,
-          maxBytes: config.lineLimits.maxBytes
+          maxAge: config.lineLimits.maxAge
         })
         expect(customConfig.writeWhen.level).to.equal(config.writeWhen.level)
       })
