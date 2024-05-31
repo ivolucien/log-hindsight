@@ -64,8 +64,8 @@ export const envConfigs = {
       maxSize: 10 * 1000
     },
     lineLimits: {
-      maxAge: 80 * 1000, // extended retention period
-      maxCount: 500 * 1000
+      maxAge: 70 * 1000,
+      maxCount: 500 * 1000 // 50 lines per instance at max instance count
     },
     writeWhen: { level: 'error' }
   },

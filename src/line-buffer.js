@@ -20,10 +20,8 @@ class LineBuffer {
    */
   add (line) {
     trace('add called')
-    const currentIndex = this.index
-    this.lines.set(currentIndex, line)
-    this.index++
-    return currentIndex
+    this.lines.set(this.index++, line)
+    return this.index - 1
   }
 
   /**
@@ -42,6 +40,9 @@ class LineBuffer {
    */
   delete (index) {
     trace('delete called', { size: this.size })
+    const line = this.lines.get(index)
+    delete line?.payload
+    delete line?.context
     return this.lines.delete(index)
   }
 

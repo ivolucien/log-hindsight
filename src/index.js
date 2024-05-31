@@ -1,6 +1,7 @@
 // src/index.js
 import { Mutex } from 'async-mutex'
 import QuickLRU from 'quick-lru' // todo:  consider js-lru or lru-cache to externalize ttl handling
+import sizeof from 'object-sizeof'
 
 import { getConfig } from './config.js'
 import LogAdapter from './adapter.js'
@@ -8,8 +9,26 @@ import LevelBuffers from './level-buffers.js'
 import getScopedLoggers from './internal-loggers.js'
 const { trace, info, error } = getScopedLoggers('hindsight')
 
+const diagnosticStats = {}
+
+function setStressStat (key, valueMethod) {
+  if (process.env.NODE_ENV === 'stress' && typeof valueMethod === 'function') {
+    diagnosticStats[key] = valueMethod(diagnosticStats[key])
+  }
+}
+
+// note that instances might still be tracked by the calling app, so don't force cleanup
+const registry = new FinalizationRegistry((name) => {
+  setStressStat('gcCount', (gcCounts = {}) => {
+    const shortName = name.slice(0, 20)
+    gcCounts[shortName] = (gcCounts[shortName] || 0) + 1
+    return gcCounts
+  })
+})
+
 // todo: track child instances per parent instance, add method for deleting instances
-// since we want logs to persist between task or API calls, track the instances to delay garbage collection
+// since we want logs to persist between task or API calls, track the instances
+// to delay garbage collection until the uer's session or task is done
 let GlobalHindsightInstances
 
 /**
@@ -35,12 +54,23 @@ export default class Hindsight {
   perLineFields = {}
   buffersMutex
   batchSize = 100
+  modifiedAt
+  maxAge
 
   _writeWhen = {}
 
+  static getDiagnosticStats () {
+    return diagnosticStats
+  }
+
   static initSingletonTracking (instanceLimits) {
-    const limits = { ...getConfig().instanceLimits, ...instanceLimits }
+    const limits = {
+      ...getConfig().instanceLimits,
+      ...instanceLimits,
+      onEviction: (key, value) => value.delete()
+    }
     info('Global Hindsight instance tracking initialized', { limits })
+    GlobalHindsightInstances?.clear()
     GlobalHindsightInstances = new QuickLRU(limits) // can use in tests to reset state
   }
 
@@ -54,32 +84,44 @@ export default class Hindsight {
 
   static cleanupExpiredInstances () {
     for (const [key, instance] of GlobalHindsightInstances) {
-      if (instance.isExpired()) {
-        GlobalHindsightInstances.delete(key);
+      if (instance.isExpired) {
+        instance.delete(key)
+        setStressStat('expiredCount', (oldCount = 0) => oldCount + 1)
       }
     }
   }
 
-  static getOrCreateChild ({ perLineFields }, parentHindsight) {
+  static getOrCreateChild (config, parentHindsight) {
     if (!GlobalHindsightInstances) {
       Hindsight.initSingletonTracking()
     }
+    const { perLineFields } = config || {}
+
     const indexKey = Hindsight.getInstanceIndexString(perLineFields)
     trace('getOrCreateChild called', { indexKey, perLineFields })
-    const instance = GlobalHindsightInstances.get(indexKey)
+    let instance = GlobalHindsightInstances.get(indexKey)
+    if (instance?.isExpired) {
+      GlobalHindsightInstances.delete(indexKey)
+      instance = null
+    }
+
     if (!instance) {
       return parentHindsight
         ? parentHindsight.child({ perLineFields }) // derived instance
-        : new Hindsight({ perLineFields }) // new instance
+        : new Hindsight(config) // new instance
     }
+    instance.modifiedAt = new Date() // reset its expiration period
+    setStressStat('childRetrievedCount', (oldCount = 0) => oldCount + 1)
     return instance
   }
 
   constructor (config = {}) {
     const { perLineFields } = config || {}
-    const { lineLimits, logger, writeWhen } = getConfig(config)
-    trace('Hindsight constructor called', { lineLimits, writeWhen, perLineFields })
+    const { instanceLimits, lineLimits, logger, writeWhen } = getConfig(config)
+    trace('Hindsight constructor called', { config })
 
+    this.modifiedAt = new Date()
+    this.maxAge = instanceLimits.maxAge
     this.adapter = new LogAdapter(logger, perLineFields)
 
     this.perLineFields = perLineFields
@@ -100,6 +142,12 @@ export default class Hindsight {
       Hindsight.initSingletonTracking(config?.instanceLimits)
     }
     GlobalHindsightInstances.set(instanceSignature, this) // add to instances map?
+    registry.register(this, instanceSignature)
+    setStressStat('objCounts', (objCounts = {}) => {
+      const shortSig = instanceSignature.slice(0, 10)
+      objCounts[shortSig] = (objCounts[shortSig] || 0) + 1
+      return objCounts
+    })
   }
 
   getOrCreateChild (...args) {
@@ -138,6 +186,10 @@ export default class Hindsight {
 
   get writeWhen () {
     return { ...this._writeWhen }
+  }
+
+  get isExpired () {
+    return this.modifiedAt.getTime() + this.maxAge > Date.now()
   }
 
   set writeWhen (writeWhen) {
@@ -184,6 +236,9 @@ export default class Hindsight {
         await this._batchYield()
       }
     }
+    setStressStat('writeIfCounts', (counts = []) => {
+      return counts.push({ date: new Date().toISOString(), levelName, count: linesOut.length })
+    })
     return linesOut
   }
 
@@ -277,26 +332,37 @@ export default class Hindsight {
    */
   async _logIntake (metadata, payload) {
     trace('_logIntake called', metadata)
-    // pull name from metadata, set defaults for specific metadata properties
-    const {
-      name,
-      ...context
-    } = {
-      name: 'info',
-      timestamp: Date.now(),
-      ...metadata
-    }
-    // todo: support options and/or format properties in metadata
-    // todo: write sanitize function to remove sensitive data from log lines, if specified
+    try {
+      // pull name from metadata, set defaults for specific metadata properties
+      const {
+        name,
+        ...context
+      } = {
+        name: 'info',
+        timestamp: Date.now(),
+        ...metadata
+      }
+      // todo: support options and/or format properties in metadata
+      // todo: write sanitize function to remove sensitive data from log lines, if specified
 
-    const action = this._selectAction(name, context, payload)
-    trace({ action, timestamp: context.timestamp, sequence: context.sequence, bytes: context.lineBytes })
-    if (action === 'discard') { return }
+      const action = this._selectAction(name, context, payload)
+      trace({ action, timestamp: context.timestamp, sequence: context.sequence, bytes: context.lineBytes })
+      if (action === 'discard') { return }
 
-    if (action === 'write') {
-      this._writeLine(name, context, payload)
-    } else if (action === 'buffer') {
-      await this._bufferLine(name, context, payload)
+      if (action === 'write') {
+        setStressStat('writeCount', (oldCount = 0) => oldCount + 1)
+        this._writeLine(name, context, payload)
+      } else if (action === 'buffer') {
+        setStressStat('buffers', (buffers = { count: 0, bytesEverBuffered: 0 }) => {
+          buffers.count++
+          buffers.bytesEverBuffered += (Object.keys(context).length * 8) + (sizeof(payload) || 8 * Object.keys(payload))
+          return buffers
+        })
+        await this._bufferLine(name, context, payload)
+      }
+    } catch (err) {
+      error(err)
+      info('Ignoring error in _logIntake, do not disrupt the calling application')
     }
   }
 
@@ -382,10 +448,17 @@ export default class Hindsight {
       payload: filteredArgs
     }
     this.buffers.addLine(name, logEntry)
-    if (this._bufferCount++ % 100 !== 0) {
+    trace('_bufferLine was called', name, context)
+
+    if (this._bufferCount++ % 1000 !== 0) {
       return
     }
-    trace('_bufferLine was called', name, context)
     this.applyLineLimits()
+  }
+
+  delete (key) {
+    this.buffers.clear() // cleared using batches in the background
+    GlobalHindsightInstances.delete(key)
+    setStressStat('instanceClearedCount', (oldCount = 0) => oldCount++)
   }
 }

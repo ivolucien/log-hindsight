@@ -8,9 +8,7 @@ const { trace } = getScopedLoggers('level-buffers')
 
 // aggregate line tracking across all buffers, for implementing global limits
 let GlobalLineRingbuffer // call initGlobalLineTracking() to reset for tests
-
-// rough estimate of the total byte size of all log lines, likely to be lower than actual
-let TotalEstimatedLineBytes = 0
+const firstLineWeakRefs = []
 
 class LevelBuffers {
   maxLineAgeMs
@@ -29,6 +27,10 @@ class LevelBuffers {
     }
   }
 
+  static getFirstLineWeakRefs () {
+    return firstLineWeakRefs
+  }
+
   /**
    * Initializes the global index for buffers.
    * This function is also useful for clearing the static index during tests.
@@ -38,23 +40,15 @@ class LevelBuffers {
    */
   static initGlobalLineTracking (maxLineCount) {
     trace('initGlobalLineTracking called')
-    TotalEstimatedLineBytes = 0
     GlobalLineRingbuffer = new RingBuffer( // init singleton on first constructor call
       maxLineCount, // max total of all log lines
-      (line) => LevelBuffers._deleteLineFromBuffer(line.context) // eviction callback for last out lines
+      (line) => {
+        trace(`Evicting line: ${JSON.stringify(line.context)}`)
+        delete line.context
+        delete line.payload
+      } // eviction callback for last out lines
     )
   }
-
-  // remove log line from the buffer referenced in the line's context object
-  static _deleteLineFromBuffer (context) {
-    trace('_deleteLineFromBuffer called')
-    const buffer = context.buffer
-    TotalEstimatedLineBytes = Math.max(0, TotalEstimatedLineBytes - context.lineBytes) // stay >= 0
-
-    buffer.delete(context.sequence)
-  }
-
-  static get TotalEstimatedLineBytes () { return TotalEstimatedLineBytes }
 
   get GlobalLineRingbuffer () {
     return GlobalLineRingbuffer // undefined if not initialized by constructor
@@ -88,9 +82,11 @@ class LevelBuffers {
    */
   addLine (levelName, line) {
     trace('addLine called')
+    if (this.levels[levelName] == null) {
+      firstLineWeakRefs.push({ now: Date.now(), line: new WeakRef(line) })
+    }
 
     const buffer = this.getOrCreate(levelName)
-    line.context.buffer = buffer // Add buffer and sequence to context as a back-reference when deleting lines
     line.context.sequence = buffer.add(line)
 
     // todo: figure out garbage collection for expired lines and the sequence index
@@ -102,11 +98,9 @@ class LevelBuffers {
    * Mark the referenced line as deleted and clear its payload, idempotently.
    * @param {Object} line - The line including its context object.
    */
-  deleteLine (line) {
+  deleteLine ({ context }) {
     // must soft delete from sequence index as it only supports deletion from the tail
-    delete line.payload
-    line.context.deleted = true
-    LevelBuffers._deleteLineFromBuffer(line.context)
+    this.levels[context.name].delete(context.sequence)
   }
 
   /**
@@ -120,7 +114,7 @@ class LevelBuffers {
     while (!GlobalLineRingbuffer.isEmpty() && GlobalLineRingbuffer.peek()?.context?.payload == null) {
       const line = GlobalLineRingbuffer.deq()
       // and from the buffer
-      LevelBuffers._deleteLineFromBuffer(line.context)
+      this.deleteLine(line)
     }
   }
 
@@ -138,7 +132,7 @@ class LevelBuffers {
       // remove sequence index reference
       const line = GlobalLineRingbuffer.deq()
       // and from the buffer
-      LevelBuffers._deleteLineFromBuffer(line.context)
+      this.deleteLine(line)
       // todo? support expiration callback parameter for each line removed
     }
   }
@@ -174,8 +168,37 @@ class LevelBuffers {
       const line = GlobalLineRingbuffer.deq()
 
       // and this also reduces the estimated byte count
-      LevelBuffers._deleteLineFromBuffer(line.context)
+      this.deleteLine(line)
     }
+  }
+
+  async _batchYield () {
+    trace('batchYield called')
+    await new Promise((resolve) => setImmediate(resolve)) // yield to event loop
+  }
+
+  clear () {
+    trace('clear called')
+
+    async function deleteBatch (index = 0) {
+      const name = Object.keys(this)[0] // first remaining level
+      const lineBuffer = this.levels[name]
+      while ((index + 1) % 100 !== 0 && index < lineBuffer?.index) {
+        const line = lineBuffer.get(index++)
+        lineBuffer.delete(line)
+      }
+      const empty = lineBuffer.isEmpty() || index >= lineBuffer.index
+      if (empty) {
+        lineBuffer.clear()
+        delete this.levels[name]
+      }
+
+      if (Object.keys(this.levels).length > 0) {
+        await this._batchYield()
+        deleteBatch(empty ? 0 : index)
+      }
+    }
+    deleteBatch() // intentionally not awaited
   }
 }
 
