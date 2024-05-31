@@ -1,4 +1,5 @@
 import Hindsight from '../index.js'
+import LevelBuffers from '../level-buffers.js'
 import { runUserRequests, stats } from './test-utils.js'
 import sizeof from 'object-sizeof'
 
@@ -12,7 +13,7 @@ const RAMP_TIME = 10000 // 10 seconds in milliseconds
 function logMemoryUsage () {
   const instances = Hindsight.getInstances()
   const totalMemory = Array.from(instances.values())
-    .reduce((bytes, instance) => bytes + sizeof(instance.buffers), 0)
+    .reduce((bytes, instance) => bytes + sizeof(instance), 0)
 
   const instanceSizes = Array.from(instances.entries()).map(([key, instance]) => ({
     key,
@@ -22,17 +23,19 @@ function logMemoryUsage () {
   instanceSizes.sort((a, b) => b.size - a.size)
 
   console.log(`Total estimated memory usage: ${totalMemory / 1000} KB`)
-  console.log('Largest 10 instances by size:')
-  instanceSizes.slice(0, 10).forEach(instance => {
+  console.log('Largest instances by size:')
+  instanceSizes.slice(0, 5).forEach(instance => {
     console.log(`${instance.key}: ${instance.size / 1000} KB `)
   })
 }
 
 describe('General Stress Test', function () {
-  this.timeout(TEST_DURATION + 5000) // Set timeout longer than the test duration
+  this.timeout(TEST_DURATION + 10 * 1000) // Set timeout longer than the test duration
+  const start = Date.now()
 
   this.beforeEach(() => {
     Hindsight.initSingletonTracking({})
+    console.log(Hindsight.getDiagnosticStats())
   })
 
   it('should handle user requests over a sustained period without error', async function () {
@@ -87,14 +90,35 @@ describe('General Stress Test', function () {
           }
         }
       })
-      console.log(`Active users: ${activeSessions} @ ${(Date.now() - startTime) / 1000}s elapsed`, stats)
-    }, 995)
+      console.log(
+        `Active users: ${activeSessions} @ ${(Date.now() - startTime) / 1000}s elapsed`,
+        stats,
+        Hindsight.getDiagnosticStats()
+      )
+    }, 10 * 1000)
 
     // Wait until the test duration has passed
     await new Promise(resolve => setTimeout(resolve, TEST_DURATION))
     // Cleanup
     clearInterval(intervalId)
     logMemoryUsage()
-    await new Promise(resolve => setTimeout(resolve, 5000))
+    await new Promise(resolve => setTimeout(resolve, 2500))
+    let lostLineCount = 0
+    const weakRefs = LevelBuffers.getFirstLineWeakRefs()
+    for (const weakRef of weakRefs) {
+      weakRef.line.deref() ? lostLineCount++ : null
+    }
+    console.log(
+      'Overall test duration: ', (Date.now() - start) / 1000 + 's',
+      { lostCount: lostLineCount, gcCount: weakRefs.length - lostLineCount }
+    )
+    await new Promise(resolve => setTimeout(resolve, 2500))
+    for (const weakRef of weakRefs) {
+      weakRef.line.deref() ? lostLineCount++ : null
+    }
+    console.log(
+      'Overall test duration: ', (Date.now() - start) / 1000 + 's',
+      { lostCount: lostLineCount, gcCount: weakRefs.length - lostLineCount }
+    )
   })
 })

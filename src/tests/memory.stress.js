@@ -1,6 +1,5 @@
 import { expect } from 'chai'
 import Hindsight from '../index.js'
-import LevelBuffers from '../level-buffers.js'
 import getScopedLoggers from '../internal-loggers.js'
 const { error } = getScopedLoggers('tests')
 
@@ -9,11 +8,15 @@ const TimeOverride = process.env.HINDSIGHT_TEST_SPEED_MS || 1000
 function printMB (bytes) { return `${Math.floor(bytes / (1000 * 1000))}MB` }
 
 describe('Line buffer volume test', function () {
-  this.beforeEach(function () {
+  let hindsight
+
+  beforeEach(function () {
     Hindsight.initSingletonTracking({})
+    console.log(Hindsight.getDiagnosticStats())
   })
 
   after(function () {
+    hindsight.delete()
     error('End of stress test, log level set to ' + process.env.DEBUG)
   })
 
@@ -23,7 +26,7 @@ describe('Line buffer volume test', function () {
       writeWhen: { level: 'error' } // set write level to error so info logs are buffered
     }
 
-    const hindsight = new Hindsight(config)
+    hindsight = new Hindsight(config)
 
     const numberOfEntries = 50 * TimeOverride
     const entrySize = 10 * 1000
@@ -61,7 +64,7 @@ describe('Line buffer volume test', function () {
       lineLimits: { maxAge: 50 * TimeOverride } // some lines age out before the test ends
     }
 
-    const hindsight = new Hindsight(config)
+    hindsight = new Hindsight(config)
 
     const numberOfEntries = 200 * TimeOverride
     const entrySize = 1000
@@ -82,14 +85,11 @@ describe('Line buffer volume test', function () {
           bigLines()
         ])
 
-        if (i % (50 * TimeOverride) === 0) { // log occasionally
+        if (i % (100 * TimeOverride) === 0) { // log occasionally
           const then = hindsight.buffers.GlobalLineRingbuffer.peek().context.timestamp
           expect(then).to.be.at.most(new Date() - maxAgeWithSlack)
 
-          console.log(i + ') Estimated buffer size:', // log occasionally
-            printMB(LevelBuffers.TotalEstimatedLineBytes),
-            ' ms elapsed:', new Date() - start
-          )
+          console.log(i + ') Seconds elapsed:', new Date() - start)
         };
       };
     } catch (error) {

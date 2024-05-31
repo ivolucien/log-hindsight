@@ -6,6 +6,11 @@ let uniquenessCount = 0
 let stats = {}
 let logArgBytes = 0
 
+// these constants are the maximum random values for each parameter, e.g. 0 to 100
+const LOG_MS = 100
+const LINES = 100
+const USER_MS = 100
+
 // string of chosen count of repeated 'testing, 123 '
 function generateRandomString (copies) {
   return 'testing, 123 '.repeat(copies) + uniquenessCount++
@@ -50,25 +55,29 @@ function skewedRandomLog (hindsight, ...logArguments) {
   }
 }
 
+function getMaxMs (old, start) {
+  // performance ms rounded to 1000th of a millisecond
+  return Math.max(old, Math.round((performance.now() - start) * 1000) / 1000)
+}
 // run a user session with random log lines and delays in between
 async function runUserSession (config, logLineCount) {
   try {
     const startGet = performance.now()
     const hindsightInstance = Hindsight.getOrCreateChild(config)
-    stats.minGetOrCreate = Math.min(stats.minGetOrCreate, performance.now() - startGet)
-    stats.maxGetOrCreate = Math.max(stats.maxGetOrCreate, performance.now() - startGet)
+    stats.maxGetOrCreate = getMaxMs(stats.maxGetOrCreate, startGet)
     for (let i = 0; i < logLineCount; i++) {
       const startLog = performance.now()
       skewedRandomLog(hindsightInstance, ...generateLogArgs())
-      stats.minLogLine = Math.min(stats.minLogLine, performance.now() - startLog)
       stats.maxLogLine = Math.max(stats.maxLogLine, performance.now() - startLog)
       // random delay between log lines
-      await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 21)))
-      if (uniquenessCount % 10000 === 0) {
+      await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * LOG_MS)))
+      if (uniquenessCount % 100000 === 0) {
+        const memUse = process.memoryUsage()
         console.log({
           lineArgBytes: logArgBytes.toLocaleString(),
           lineCount: hindsightInstance.buffers.GlobalLineRingbuffer.size().toLocaleString(),
-          memoryStats: process.memoryUsage()
+          memoryStats: Object.fromEntries(Object.entries(memUse)
+            .map(([key, value]) => [key, `${value / 1000000} MB`]))
         })
       }
     }
@@ -80,14 +89,14 @@ async function runUserSession (config, logLineCount) {
 // run the specified number of user requests over a specified duration
 async function runUserRequests (requestCount, runDuration) {
   if (requestCount <= 0 || runDuration <= 0) return // bail if nothing to do
-  stats = { minGetOrCreate: 10000, maxGetOrCreate: -1, minLogLine: 10000, maxLogLine: -1 }
+  stats = { maxGetOrCreate: -1, maxLogLine: -1 }
 
   const sessionId = generateRandomString(1)
   const startTime = Date.now()
   while (Date.now() - startTime < runDuration) {
     const userConfig = { perLineFields: { sessionId } }
-    runUserSession(userConfig, Math.floor(Math.random() * 100) + 1, userConfig)
-    await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 91) + 10)) // configurable?
+    runUserSession(userConfig, Math.floor(Math.random() * LINES) + 1, userConfig)
+    await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * USER_MS) + 10)) // configurable?
     if (--requestCount <= 0) break
   }
   return Date.now() // end of user activity
