@@ -4,7 +4,7 @@ import os from 'os'
 import RingBuffer from 'ringbufferjs' // "js" here is not a file extension
 import LineBuffer from './line-buffer.js'
 import getScopedLoggers from './internal-loggers.js'
-const { trace } = getScopedLoggers('level-buffers')
+const { trace, info } = getScopedLoggers('level-buffers')
 
 // aggregate line tracking across all buffers, for implementing global limits
 let GlobalLineRingbuffer // call initGlobalLineTracking() to reset for tests
@@ -31,6 +31,14 @@ class LevelBuffers {
     return firstLineWeakRefs
   }
 
+  static get GlobalLineRingbuffer () {
+    return GlobalLineRingbuffer // undefined if not initialized by constructor
+  }
+
+  static get totalLineCount () {
+    return GlobalLineRingbuffer?.size()
+  }
+
   /**
    * Initializes the global index for buffers.
    * This function is also useful for clearing the static index during tests.
@@ -44,6 +52,8 @@ class LevelBuffers {
       maxLineCount, // max total of all log lines
       (line) => {
         trace(`Evicting line: ${JSON.stringify(line.context)}`)
+        const buffer = line.context.weakBufferRef.deref()
+        buffer?.delete(line.context.sequence)
         delete line.context
         delete line.payload
       } // eviction callback for last out lines
@@ -88,6 +98,7 @@ class LevelBuffers {
 
     const buffer = this.getOrCreate(levelName)
     line.context.sequence = buffer.add(line)
+    line.context.weakBufferRef = new WeakRef(buffer) // to delete from buffer after eviction
 
     // todo: figure out garbage collection for expired lines and the sequence index
     GlobalLineRingbuffer.enq(line) // add to sequence index
@@ -99,6 +110,7 @@ class LevelBuffers {
    * @param {Object} line - The line including its context object.
    */
   deleteLine ({ context }) {
+    trace('deleteLine called')
     // must soft delete from sequence index as it only supports deletion from the tail
     this.levels[context.name].delete(context.sequence)
   }
@@ -125,10 +137,13 @@ class LevelBuffers {
    */
   limitByMaxAge (maxLineAgeMs = this.maxLineAgeMs) {
     trace('limitByMaxAge called')
-    const expiration = Date.now() - maxLineAgeMs
+    const oldestValidTimestamp = Date.now() - maxLineAgeMs
 
     // todo? handle async to avoid caller code delay
-    while (!GlobalLineRingbuffer.isEmpty() && GlobalLineRingbuffer.peek()?.context?.timestamp < expiration) {
+    while (
+      !GlobalLineRingbuffer.isEmpty() &&
+      GlobalLineRingbuffer.peek()?.context?.timestamp < oldestValidTimestamp
+    ) {
       // remove sequence index reference
       const line = GlobalLineRingbuffer.deq()
       // and from the buffer
@@ -151,7 +166,7 @@ class LevelBuffers {
     const { heap_size_limit: heapLimit, used_heap_size: usedHeap } = v8.getHeapStatistics()
     const logicalHeapFree = heapLimit - usedHeap
 
-    // factor in configured limit and actual free memory
+    // factor in logical limit and actual free memory
     const maxAvailableHeap = Math.min(logicalHeapFree, os.freemem())
 
     const bytesAvailable = maxAvailableHeap * percentForHindsight
@@ -159,6 +174,12 @@ class LevelBuffers {
       // there's enough free memory for the app, done here
       return
     }
+    info('Warning: Free memory low', {
+      bytesAvailable,
+      reservedAppBytes,
+      maxAvailableHeap,
+      totalLineCount: GlobalLineRingbuffer.size()
+    })
 
     // how to prioritize which lines to remove? by level? by age? by size?
     // for now just trim the oldest lines from the sequence index
@@ -166,10 +187,9 @@ class LevelBuffers {
     let deqBatchCount = 200
     while (deqBatchCount-- > 0) {
       const line = GlobalLineRingbuffer.deq()
-
-      // and this also reduces the estimated byte count
-      this.deleteLine(line)
+      this.deleteLine(line) // remove from level buffer as well
     }
+    info('Removed oldest lines to free up memory', { totalLineCount: GlobalLineRingbuffer.size() })
   }
 
   async _batchYield () {

@@ -28,7 +28,7 @@ const registry = new FinalizationRegistry((name) => {
 
 // todo: track child instances per parent instance, add method for deleting instances
 // since we want logs to persist between task or API calls, track the instances
-// to delay garbage collection until the uer's session or task is done
+// to delay garbage collection until the user's session or task is done
 let GlobalHindsightInstances
 
 /**
@@ -181,7 +181,7 @@ export default class Hindsight {
   }
 
   get totalLineCount () {
-    return this.buffers.GlobalLineRingbuffer.size()
+    return LevelBuffers.totalLineCount
   }
 
   get writeWhen () {
@@ -346,7 +346,7 @@ export default class Hindsight {
       // todo: write sanitize function to remove sensitive data from log lines, if specified
 
       const action = this._selectAction(name, context, payload)
-      trace({ action, timestamp: context.timestamp, sequence: context.sequence, bytes: context.lineBytes })
+      trace({ action, context })
       if (action === 'discard') { return }
 
       if (action === 'write') {
