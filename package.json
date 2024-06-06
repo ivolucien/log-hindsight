@@ -8,10 +8,10 @@
   "scripts": {
     "lint": "eslint src",
     "lint-fix": "eslint src --fix",
-    "test": "DEBUG='hindsight:*,-*:trace' NODE_ENV=test mocha 'src/tests/**/*.test.js' 'src/tests/**/*.integration.js'",
+    "test": "DEBUG=${DEBUG:-'hindsight:*,-*:trace'} NODE_ENV=test mocha 'src/tests/**/*.test.js' 'src/tests/**/*.integration.js'",
     "test-dev": "DEBUG='hindsight:*' NODE_ENV=development mocha 'src/tests/**/*.test.js' 'src/tests/**/*.integration.js'",
     "test-perf": "date -u && NODE_ENV=stress 0x ./node_modules/mocha/bin/mocha 'src/tests/**/*.perf.js'; date -u",
-    "test-stress": "date -u && DEBUG='hindsight:*,-*:trace' NODE_ENV=stress mocha 'src/tests/**/*.stress.js'; date -u"
+    "test-stress": "date -u && DEBUG=${DEBUG:-'hindsight:*,-*:trace'} NODE_ENV=stress mocha 'src/tests/**/*.stress.js'; date -u"
   },
   "repository": {
     "type": "git",

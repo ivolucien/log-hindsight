@@ -1,6 +1,6 @@
 import Hindsight from '../index.js'
 import LevelBuffers from '../level-buffers.js'
-import { runUserRequests, stats } from './test-utils.js'
+import { logMemoryUsage, runUserRequests, stats } from './test-utils.js'
 import sizeof from 'object-sizeof'
 
 // Constants for test configuration
@@ -10,32 +10,23 @@ const MIN_SESSION_DURATION = 30000
 const MAX_SESSION_DURATION = 70000
 const RAMP_TIME = 10000 // 10 seconds in milliseconds
 
-function logMemoryUsage () {
-  const instances = Hindsight.getInstances()
-  const totalMemory = Array.from(instances.values())
-    .reduce((bytes, instance) => bytes + sizeof(instance), 0)
-
-  const instanceSizes = Array.from(instances.entries()).map(([key, instance]) => ({
-    key,
-    size: sizeof(instance)
-  }))
-
-  instanceSizes.sort((a, b) => b.size - a.size)
-
-  console.log(`Total estimated memory usage: ${totalMemory / 1000} KB`)
-  console.log('Largest instances by size:')
-  instanceSizes.slice(0, 5).forEach(instance => {
-    console.log(`${instance.key}: ${instance.size / 1000} KB `)
-  })
-}
-
 describe('General Stress Test', function () {
   this.timeout(TEST_DURATION + 10 * 1000) // Set timeout longer than the test duration
   const start = Date.now()
+  let preTestLineCreation = 0
 
-  this.beforeEach(() => {
+  beforeEach(() => {
     Hindsight.initSingletonTracking({})
-    console.log(Hindsight.getDiagnosticStats())
+    preTestLineCreation = LevelBuffers.GlobalLineRingbuffer?.size() || 0
+    console.log({ preTestLineCreation, diagnosticStats: Hindsight.getDiagnosticStats() })
+  })
+
+  this.afterEach(() => {
+    const durationS = (Date.now() - start) / 1000
+    console.log({
+      durationS,
+      netTestLineCreation: LevelBuffers.GlobalLineRingbuffer?.size() - preTestLineCreation
+    })
   })
 
   it('should handle user requests over a sustained period without error', async function () {
@@ -102,23 +93,70 @@ describe('General Stress Test', function () {
     // Cleanup
     clearInterval(intervalId)
     logMemoryUsage()
-    await new Promise(resolve => setTimeout(resolve, 2500))
-    let lostLineCount = 0
-    const weakRefs = LevelBuffers.getFirstLineWeakRefs()
-    for (const weakRef of weakRefs) {
-      weakRef.line.deref() ? lostLineCount++ : null
+    await new Promise(resolve => setTimeout(resolve, 5000))
+    async function logAndWait () {
+      let referencedFirstLineCount = 0
+      let reapedLineCount = 0
+      const weakRefs = LevelBuffers.getFirstLineWeakRefs()
+      for (const weakRef of weakRefs) {
+        weakRef.line.deref() ? referencedFirstLineCount++ : reapedLineCount++
+      }
+      console.log(
+        'Overall test duration: ', (Date.now() - start) / 1000 + 's',
+        {
+          referencedFirstLineCount,
+          reapedLineCount,
+          discrepancy: weakRefs.length - (referencedFirstLineCount + reapedLineCount)
+        }
+      )
+      await new Promise(resolve => setTimeout(resolve, 10 * 1000))
     }
-    console.log(
-      'Overall test duration: ', (Date.now() - start) / 1000 + 's',
-      { lostCount: lostLineCount, gcCount: weakRefs.length - lostLineCount }
-    )
-    await new Promise(resolve => setTimeout(resolve, 2500))
-    for (const weakRef of weakRefs) {
-      weakRef.line.deref() ? lostLineCount++ : null
+
+    function logAndKillInstances () {
+      const globalInstances = Hindsight.getInstances()
+
+      const stats = {
+        fullStatsCount: 0,
+        instanceCount: globalInstances.size,
+        bufferCount: 0,
+        lineCount: 0,
+        payloadCount: 0,
+        approxTotalBytes: 0,
+        ...Hindsight.getDiagnosticStats()
+      }
+      globalInstances.forEach(instance => {
+        if (instance?.buffers?.levels == null) {
+          return
+        }
+        try {
+          stats.bufferCount += Object.keys(instance.buffers.levels).length || 0
+          stats.fullStatsCount++
+          Object.values(instance.buffers.levels).forEach(buff => {
+            stats.lineCount += buff?.lines?.size || 0
+            buff?.lines?.forEach(line => {
+              stats.payloadCount += line.payload?.length <= 0 ? 0 : 1
+            })
+          })
+          stats.approxTotalBytes += sizeof(instance)
+          instance.delete()
+        } catch (error) {
+          console.error(error)
+        }
+      })
+      console.log({ stats })
     }
-    console.log(
-      'Overall test duration: ', (Date.now() - start) / 1000 + 's',
-      { lostCount: lostLineCount, gcCount: weakRefs.length - lostLineCount }
-    )
+    logAndKillInstances()
+    await logAndWait()
+    Hindsight.applyLineLimits()
+    await logAndWait()
+    await logAndWait()
+    await logAndWait()
+    await logAndWait()
+    await logAndWait()
+    logAndKillInstances()
+    await logAndWait()
+    await logAndWait()
+    await logAndWait()
+    await new Promise(resolve => setTimeout(resolve, 1000))
   })
 })

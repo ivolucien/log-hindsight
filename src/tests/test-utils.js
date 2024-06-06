@@ -75,7 +75,7 @@ async function runUserSession (config, logLineCount) {
         const memUse = process.memoryUsage()
         console.log({
           lineArgBytes: logArgBytes.toLocaleString(),
-          lineCount: hindsightInstance.buffers.GlobalLineRingbuffer.size().toLocaleString(),
+          lineCount: LevelBuffers.totalLineCount.toLocaleString(),
           memoryStats: Object.fromEntries(Object.entries(memUse)
             .map(([key, value]) => [key, `${value / 1000000} MB`]))
         })
@@ -102,4 +102,24 @@ async function runUserRequests (requestCount, runDuration) {
   return Date.now() // end of user activity
 }
 
-export { generateLogArgs, skewedRandomLog, runUserSession, runUserRequests, stats }
+function logMemoryUsage () {
+  const instances = Hindsight.getInstances()
+  const trackedInstanceCount = instances.size
+  const totalMemory = Array.from(instances.values())
+    .reduce((bytes, instance) => bytes + sizeof(instance), 0)
+
+  const instanceSizes = Array.from(instances.entries()).map(([key, instance]) => ({
+    key,
+    size: sizeof(instance)
+  }))
+
+  instanceSizes.sort((a, b) => b.size - a.size)
+
+  console.log(`Total estimated memory usage: ${totalMemory / 1000} KB`)
+  console.log(`Largest instances by size, of ${trackedInstanceCount}:`)
+  instanceSizes.slice(0, 5).forEach(instance => {
+    console.log(`${instance.key}: ${instance.size / 1000} KB `)
+  })
+}
+
+export { generateLogArgs, skewedRandomLog, runUserSession, runUserRequests, stats, logMemoryUsage }
