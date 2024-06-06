@@ -61,11 +61,11 @@ export const envConfigs = {
     ...defaultConfig,
     instanceLimits: {
       maxAge: 70 * 1000,
-      maxSize: 10 * 1000
+      maxSize: 20 * 1000
     },
     lineLimits: {
       maxAge: 70 * 1000,
-      maxCount: 500 * 1000 // 50 lines per instance at max instance count
+      maxCount: 1000 * 1000 // 50 lines per instance at max instance count
     },
     writeWhen: { level: 'error' }
   },

@@ -2,20 +2,21 @@ import { expect } from 'chai'
 import Hindsight from '../index.js'
 import LevelBuffers from '../level-buffers.js'
 import getScopedLoggers from '../internal-loggers.js'
-const { trace } = getScopedLoggers('tests')
+const { trace, info } = getScopedLoggers('tests')
 
 describe('Hindsight applyLineLimits Tests', function () {
   let hindsight
+  let lineLimits
 
   beforeEach(function () {
     // Setup Hindsight with custom limits for testing
-    const lineLimits = {
+    lineLimits = {
       maxSize: 5,
       maxAge: 50 // 50 milliseconds
     }
     LevelBuffers.initGlobalLineTracking(lineLimits.maxSize) // reset static line index
     hindsight = new Hindsight({ lineLimits })
-    hindsight.buffers.GlobalLineRingbuffer.deqN(hindsight.buffers.GlobalLineRingbuffer.size()) // Clear line index
+    hindsight.buffers.GlobalLineRingbuffer.deqN(LevelBuffers.totalLineCount) // Clear line index
   })
 
   it('should limit log lines above the specified count', function () {

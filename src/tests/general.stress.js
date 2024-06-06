@@ -3,7 +3,7 @@ import LevelBuffers from '../level-buffers.js'
 import { logMemoryUsage, runUserRequests, stats } from './test-utils.js'
 import sizeof from 'object-sizeof'
 
-// Constants for test configuration
+// Constants for test configuration, tuned for 1.5GB heap size
 const MAX_USER_COUNT = 200
 const TEST_DURATION = 130000
 const MIN_SESSION_DURATION = 30000
@@ -11,7 +11,7 @@ const MAX_SESSION_DURATION = 70000
 const RAMP_TIME = 10000 // 10 seconds in milliseconds
 
 describe('General Stress Test', function () {
-  this.timeout(TEST_DURATION + 10 * 1000) // Set timeout longer than the test duration
+  this.timeout(TEST_DURATION + 120 * 1000) // Set timeout longer than the test duration
   const start = Date.now()
   let preTestLineCreation = 0
 

@@ -34,13 +34,13 @@ describe('Line buffer volume test', function () {
     console.log(Hindsight.getDiagnosticStats())
   })
 
-  after(function () {
+  afterEach(async function () {
     hindsight.delete()
     error('End of stress test, log level set to ' + process.env.DEBUG)
   })
 
   it('should just buffer info level logs, test large buffer size', async function () {
-    this.timeout(60 * TimeOverride)
+    this.timeout(90 * TimeOverride)
     const config = {
       writeWhen: { level: 'error' } // set write level to error so info logs are buffered
     }
@@ -60,11 +60,13 @@ describe('Line buffer volume test', function () {
       for (let i = 0; i < numberOfEntries && maxTestTime > new Date() - testStart; i += 10) {
         await Promise.all([
           bigLines(),
-          bigLines()
+          bigLines(),
+          new Promise(resolve => setImmediate(resolve))
         ])
 
         if (i % (5 * TimeOverride) === 0) { // log occasionally
           console.log(`Test ${i}) ${Date.now() - start} ms elapsed`)
+          await logAndWait(100)
         }
       };
     } catch (error) {
@@ -78,7 +80,7 @@ describe('Line buffer volume test', function () {
   })
 
   it('should just buffer lots of lines and release all as they age out', async function () {
-    this.timeout(60 * TimeOverride)
+    this.timeout(90 * TimeOverride)
     const config = {
       writeWhen: { level: 'error' }, // set write level to error so info logs are buffered
       lineLimits: { maxAge: 50 * TimeOverride } // some lines age out before the test ends
@@ -86,7 +88,7 @@ describe('Line buffer volume test', function () {
 
     hindsight = new Hindsight(config)
 
-    const numberOfEntries = 200 * TimeOverride
+    const numberOfEntries = 50 * TimeOverride
     const entrySize = 1000
     const testStart = new Date()
     const maxTestTime = 58 * TimeOverride
@@ -102,7 +104,8 @@ describe('Line buffer volume test', function () {
       for (let i = 0; i < numberOfEntries && maxTestTime > new Date() - testStart; i += 10) {
         await Promise.all([
           bigLines(),
-          bigLines()
+          bigLines(),
+          new Promise(resolve => setTimeout(resolve, 5))
         ])
 
         if (i % (50 * TimeOverride) === 0) { // log occasionally

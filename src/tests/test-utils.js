@@ -1,6 +1,7 @@
 import Hindsight from '../index.js'
 import sizeof from 'object-sizeof'
 import { performance } from 'perf_hooks'
+import LevelBuffers from '../level-buffers.js'
 
 let uniquenessCount = 0
 let stats = {}
@@ -9,7 +10,7 @@ let logArgBytes = 0
 // these constants are the maximum random values for each parameter, e.g. 0 to 100
 const LOG_MS = 100
 const LINES = 100
-const USER_MS = 100
+const USER_MS = 200
 
 // string of chosen count of repeated 'testing, 123 '
 function generateRandomString (copies) {
