@@ -9,8 +9,8 @@
 
 export const defaultConfig = {
   instanceLimits: {
-    maxSize: 5 * 1000, // 5k instances
-    maxAge: 70 * 1000 // 70 second LRU idle timeout
+    maxSize: 0,
+    maxAge: 0 // tracking off
   },
   lineLimits: {
     maxAge: 70 * 1000, // 70 seconds
@@ -60,8 +60,8 @@ export const envConfigs = {
   stress: {
     ...defaultConfig,
     instanceLimits: {
-      maxAge: 70 * 1000,
-      maxSize: 20 * 1000
+      maxAge: 61 * 1000,
+      maxSize: 10 * 1000
     },
     lineLimits: {
       maxAge: 70 * 1000,

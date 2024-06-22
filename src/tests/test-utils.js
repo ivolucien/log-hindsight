@@ -1,4 +1,5 @@
 import Hindsight from '../index.js'
+import ObjectCache from '../object-cache.js'
 import sizeof from 'object-sizeof'
 import { performance } from 'perf_hooks'
 import LevelBuffers from '../level-buffers.js'
@@ -104,7 +105,7 @@ async function runUserRequests (requestCount, runDuration) {
 }
 
 function logMemoryUsage () {
-  const instances = Hindsight.getInstances()
+  const instances = ObjectCache.getInstances()
   const trackedInstanceCount = instances.size
   const totalMemory = Array.from(instances.values())
     .reduce((bytes, instance) => bytes + sizeof(instance), 0)

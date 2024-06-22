@@ -1,5 +1,6 @@
 import { expect } from 'chai'
 import Hindsight from '../index.js'
+import ObjectCache from '../object-cache.js'
 import { getConfig } from '../config.js'
 import LevelBuffers from '../level-buffers.js'
 
@@ -8,7 +9,7 @@ describe('Hindsight level buffers', function () {
 
   beforeEach(() => {
     const { lineLimits } = getConfig()
-    Hindsight.initSingletonTracking()
+    ObjectCache.initSingletonTracking()
     LevelBuffers.initGlobalLineTracking(lineLimits.maxCount) // reset static line index
   })
 

@@ -1,5 +1,6 @@
 import { expect } from 'chai'
 import Hindsight from '../index.js'
+import ObjectCache from '../object-cache.js'
 import LevelBuffers from '../level-buffers.js'
 import { logMemoryUsage } from './test-utils.js'
 import getScopedLoggers from '../internal-loggers.js'
@@ -30,7 +31,7 @@ describe('Line buffer volume test', function () {
 
   beforeEach(function () {
     start = Date.now()
-    Hindsight.initSingletonTracking({})
+    ObjectCache.initSingletonTracking({})
     console.log(Hindsight.getDiagnosticStats())
   })
 

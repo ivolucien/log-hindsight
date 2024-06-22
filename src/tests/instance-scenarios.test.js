@@ -1,5 +1,6 @@
 import { expect } from 'chai'
 import Hindsight from '../index.js'
+import ObjectCache from '../object-cache.js'
 import getScopedLoggers from '../internal-loggers.js'
 const { trace } = getScopedLoggers('tests:')
 
@@ -12,7 +13,7 @@ describe('Hindsight instance lifecycle scenarios', function () {
 
   beforeEach(function () {
     // Initialize Hindsight with a fresh QuickLRU instance for each test
-    Hindsight.initSingletonTracking(testConfig.instanceLimits)
+    ObjectCache.initSingletonTracking(testConfig.instanceLimits)
   })
 
   it('should handle fast instance turnover correctly', function (done) {
@@ -24,7 +25,7 @@ describe('Hindsight instance lifecycle scenarios', function () {
     }
 
     setTimeout(() => {
-      const instances = Hindsight.getInstances()
+      const instances = ObjectCache.getInstances()
       instances.forEach((instance) => trace({ instance: instance.perLineFields }))
       expect(instances.size).to.be.at.most(10) // maxSize is 10
       expect(instances.has(makeInstanceKey('session19'))).to.be.true // Last instance should be present
@@ -38,11 +39,11 @@ describe('Hindsight instance lifecycle scenarios', function () {
     Hindsight.getOrCreateChild({ perLineFields: { sessionId: 'session1' } }, hindsight)
     Hindsight.getOrCreateChild({ perLineFields: { sessionId: 'session2' } }, hindsight)
 
-    let instances = Hindsight.getInstances()
+    let instances = ObjectCache.getInstances()
     expect(instances.size).to.equal(3) // parent + 2 children
 
     setTimeout(() => {
-      instances = Hindsight.getInstances()
+      instances = ObjectCache.getInstances()
       // access instances to trigger lasy eviction
       instances.forEach((instance) => trace({ instance: instance.perLineFields }))
       expect(instances.size).to.equal(0) // All instances should be expired
@@ -55,7 +56,7 @@ describe('Hindsight instance lifecycle scenarios', function () {
     const child1 = parent.getOrCreateChild({ perLineFields: { sessionId: 'child1' } })
     const child2 = parent.getOrCreateChild({ perLineFields: { sessionId: 'child2' } })
 
-    const instances = Hindsight.getInstances()
+    const instances = ObjectCache.getInstances()
     expect(instances.get(makeInstanceKey('child1'))).to.equal(child1)
     expect(instances.get(makeInstanceKey('child2'))).to.equal(child2)
     expect(child1).to.not.equal(child2)
@@ -74,7 +75,7 @@ describe('Hindsight instance lifecycle scenarios', function () {
     }
 
     setTimeout(() => {
-      const instances = Hindsight.getInstances()
+      const instances = ObjectCache.getInstances()
       const expectedUnique = {}
       // access instances to trigger lazy eviction
       instances.forEach((instance) => {
@@ -90,7 +91,7 @@ describe('Hindsight instance lifecycle scenarios', function () {
   })
 
   afterEach(function () {
-    // Reset GlobalHindsightInstances to avoid interference with other tests
-    Hindsight.initSingletonTracking()
+    // Reset singleton tracking to avoid interfering with other tests
+    ObjectCache.initSingletonTracking()
   })
 })

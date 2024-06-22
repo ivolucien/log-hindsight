@@ -1,6 +1,7 @@
 // lifecycle.test.js
 import { expect } from 'chai'
 import Hindsight from '../index.js'
+import ObjectCache from '../object-cache.js'
 
 function makeKey (fields) {
   return JSON.stringify(fields)
@@ -14,8 +15,13 @@ describe('Hindsight Instance Lifecycle Management with QuickLRU', function () {
 
   beforeEach(function () {
     // Initialize Hindsight with a fresh QuickLRU instance
-    Hindsight.initSingletonTracking()
+    ObjectCache.initSingletonTracking()
     hindsight = new Hindsight()
+  })
+
+  afterEach(function () {
+    // Reset singleton tracking to avoid interfering with other tests
+    ObjectCache.initSingletonTracking()
   })
 
   it('should correctly create and retrieve instances', function () {
@@ -28,7 +34,7 @@ describe('Hindsight Instance Lifecycle Management with QuickLRU', function () {
 
   it('should evict least recently used instances', function () {
     // Configure Hindsight with a small maxSize for testing
-    Hindsight.initSingletonTracking({ maxSize: 2 })
+    ObjectCache.initSingletonTracking({ maxSize: 2, maxAge: 1000 })
 
     const instance1 = Hindsight.getOrCreateChild({ perLineFields: testPerLineFields }, hindsight)
     Hindsight.getOrCreateChild({ perLineFields: testPerLineFields2 }, hindsight)
@@ -40,7 +46,7 @@ describe('Hindsight Instance Lifecycle Management with QuickLRU', function () {
     const testPerLineFields3 = { sessionId: 'testSession3' }
     const instance3 = Hindsight.getOrCreateChild({ perLineFields: testPerLineFields3 }, hindsight)
 
-    instances = Hindsight.getInstances()
+    instances = ObjectCache.getInstances()
     console.log({ maxSize: instances.maxSize, size: instances.size })
 
     expect(instances.has(makeKey(testPerLineFields))).to.be.true
@@ -52,13 +58,13 @@ describe('Hindsight Instance Lifecycle Management with QuickLRU', function () {
 
   it('should evict instances older than maxAge', function (done) {
     // Configure Hindsight with a small maxAge for testing
-    Hindsight.initSingletonTracking({ maxSize: 5, maxAge: 100 })
+    ObjectCache.initSingletonTracking({ maxSize: 5, maxAge: 100 })
 
     Hindsight.getOrCreateChild({ perLineFields: testPerLineFields }, hindsight) // instance 1
 
     setTimeout(() => {
       const instance2 = Hindsight.getOrCreateChild({ perLineFields: testPerLineFields2 }, hindsight)
-      instances = Hindsight.getInstances()
+      instances = ObjectCache.getInstances()
       expect(instances.has(makeKey(testPerLineFields))).to.be.false // instance1 should be evicted
 
       expect(instances.has(makeKey(testPerLineFields2))).to.be.true
@@ -69,7 +75,7 @@ describe('Hindsight Instance Lifecycle Management with QuickLRU', function () {
 
   it('should refresh instance position in LRU cache on update', function () {
     // Configure Hindsight with a small maxSize for testing
-    Hindsight.initSingletonTracking({ maxSize: 2 })
+    ObjectCache.initSingletonTracking({ maxSize: 2, maxAge: 1000 })
 
     const instance1 = Hindsight.getOrCreateChild({ perLineFields: testPerLineFields }, hindsight)
     Hindsight.getOrCreateChild({ perLineFields: testPerLineFields2 }, hindsight)
@@ -81,7 +87,7 @@ describe('Hindsight Instance Lifecycle Management with QuickLRU', function () {
     const testPerLineFields3 = { sessionId: 'testSession3' }
     const instance3 = Hindsight.getOrCreateChild({ perLineFields: testPerLineFields3 }, hindsight)
 
-    instances = Hindsight.getInstances()
+    instances = ObjectCache.getInstances()
     expect(instances.has(makeKey(testPerLineFields))).to.be.true
     expect(instances.get(makeKey(testPerLineFields))).to.equal(instance1)
 
@@ -89,10 +95,5 @@ describe('Hindsight Instance Lifecycle Management with QuickLRU', function () {
 
     expect(instances.has(makeKey(testPerLineFields3))).to.be.true
     expect(instances.get(makeKey(testPerLineFields3))).to.equal(instance3)
-  })
-
-  afterEach(function () {
-    // Reset GlobalHindsightInstances to avoid interfering with other test files
-    Hindsight.initSingletonTracking()
   })
 })

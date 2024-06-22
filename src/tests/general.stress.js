@@ -1,4 +1,5 @@
 import Hindsight from '../index.js'
+import ObjectCache from '../object-cache.js'
 import LevelBuffers from '../level-buffers.js'
 import { logMemoryUsage, runUserRequests, stats } from './test-utils.js'
 import sizeof from 'object-sizeof'
@@ -16,7 +17,7 @@ describe('General Stress Test', function () {
   let preTestLineCreation = 0
 
   beforeEach(() => {
-    Hindsight.initSingletonTracking({})
+    ObjectCache.initSingletonTracking({})
     preTestLineCreation = LevelBuffers.GlobalLineRingbuffer?.size() || 0
     console.log({ preTestLineCreation, diagnosticStats: Hindsight.getDiagnosticStats() })
   })
@@ -113,7 +114,7 @@ describe('General Stress Test', function () {
     }
 
     function logAndKillInstances () {
-      const globalInstances = Hindsight.getInstances()
+      const globalInstances = ObjectCache.getInstances()
 
       const stats = {
         fullStatsCount: 0,
@@ -147,7 +148,7 @@ describe('General Stress Test', function () {
     }
     logAndKillInstances()
     await logAndWait()
-    Hindsight.applyLineLimits()
+    ObjectCache.cleanupExpiredInstances()
     await logAndWait()
     await logAndWait()
     await logAndWait()
