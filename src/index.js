@@ -1,9 +1,9 @@
 // src/index.js
 import { Mutex } from 'async-mutex'
-import QuickLRU from 'quick-lru' // todo:  consider js-lru or lru-cache to externalize ttl handling
 import sizeof from 'object-sizeof'
 
 import { getConfig } from './config.js'
+import ObjectCache from './object-cache.js'
 import LogAdapter from './adapter.js'
 import LevelBuffers from './level-buffers.js'
 import getScopedLoggers from './internal-loggers.js'
@@ -16,20 +16,6 @@ function setStressStat (key, valueMethod) {
     diagnosticStats[key] = valueMethod(diagnosticStats[key])
   }
 }
-
-// note that instances might still be tracked by the calling app, so don't force cleanup
-const registry = new FinalizationRegistry((name) => {
-  setStressStat('gcCount', (gcCounts = {}) => {
-    const shortName = name.slice(0, 20)
-    gcCounts[shortName] = (gcCounts[shortName] || 0) + 1
-    return gcCounts
-  })
-})
-
-// todo: track child instances per parent instance, add method for deleting instances
-// since we want logs to persist between task or API calls, track the instances
-// to delay garbage collection until the user's session or task is done
-let GlobalHindsightInstances
 
 /**
  * Hindsight is a logger wrapper that buffers log lines and supports conditional logging logic.
@@ -63,56 +49,12 @@ export default class Hindsight {
     return diagnosticStats
   }
 
-  static initSingletonTracking (instanceLimits) {
-    const limits = {
-      ...getConfig().instanceLimits,
-      ...instanceLimits,
-      onEviction: (key, value) => value.delete()
-    }
-    info('Global Hindsight instance tracking initialized', { limits })
-    GlobalHindsightInstances?.clear()
-    GlobalHindsightInstances = new QuickLRU(limits) // can use in tests to reset state
-  }
-
-  static getInstances () { // for manual instance management and test use
-    return GlobalHindsightInstances
-  }
-
   static getInstanceIndexString (perLineFields = {}) {
     return JSON.stringify(perLineFields)
   }
 
-  static cleanupExpiredInstances () {
-    for (const [key, instance] of GlobalHindsightInstances) {
-      if (instance.isExpired) {
-        instance.delete(key)
-        setStressStat('expiredCount', (oldCount = 0) => oldCount + 1)
-      }
-    }
-  }
-
   static getOrCreateChild (config, parentHindsight) {
-    if (!GlobalHindsightInstances) {
-      Hindsight.initSingletonTracking()
-    }
-    const { perLineFields } = config || {}
-
-    const indexKey = Hindsight.getInstanceIndexString(perLineFields)
-    trace('getOrCreateChild called', { indexKey, perLineFields })
-    let instance = GlobalHindsightInstances.get(indexKey)
-    if (instance?.isExpired) {
-      GlobalHindsightInstances.delete(indexKey)
-      instance = null
-    }
-
-    if (!instance) {
-      return parentHindsight
-        ? parentHindsight.child({ perLineFields }) // derived instance
-        : new Hindsight(config) // new instance
-    }
-    instance.modifiedAt = new Date() // reset its expiration period
-    setStressStat('childRetrievedCount', (oldCount = 0) => oldCount + 1)
-    return instance
+    return ObjectCache.getOrCreateChild(config, parentHindsight)
   }
 
   constructor (config = {}) {
@@ -138,11 +80,7 @@ export default class Hindsight {
     const instanceSignature = Hindsight.getInstanceIndexString(perLineFields)
     trace('constructor', { instanceSignature, moduleKeys: Object.keys(logger) })
     this._initWrapper()
-    if (GlobalHindsightInstances == null) {
-      Hindsight.initSingletonTracking(config?.instanceLimits)
-    }
-    GlobalHindsightInstances.set(instanceSignature, this) // add to instances map?
-    registry.register(this, instanceSignature)
+    ObjectCache.getInstances(config.instanceLimits)?.set(instanceSignature, this) // todo: make optional
     setStressStat('objCounts', (objCounts = {}) => {
       const shortSig = instanceSignature.slice(0, 10)
       objCounts[shortSig] = (objCounts[shortSig] || 0) + 1
@@ -168,7 +106,10 @@ export default class Hindsight {
 
     const innerChild = logger.child ? logger.child(perLineFields) : logger // use child factory if available
     const childConfig = {
-      instanceLimits: { maxAge: GlobalHindsightInstances.maxAge, maxSize: GlobalHindsightInstances.maxSize },
+      instanceLimits: {
+        maxAge: ObjectCache.getInstances()?.maxAge,
+        maxSize: ObjectCache.getInstances()?.maxSize
+      },
       lineLimits: combinedLimits,
       logger: innerChild,
       writeWhen: combinedWriteWhen
@@ -210,7 +151,7 @@ export default class Hindsight {
     this.buffers.limitByMaxAge()
     this.buffers.limitByMinFreeMemory()
     this.buffers.limitByMaxCount()
-    Hindsight.cleanupExpiredInstances()
+    ObjectCache.cleanupExpiredInstances()
   }
 
   async _batchYield () {
@@ -458,7 +399,7 @@ export default class Hindsight {
 
   delete (key) {
     this.buffers.clear() // cleared using batches in the background
-    GlobalHindsightInstances.delete(key)
+    ObjectCache.getInstances().delete(key)
     setStressStat('instanceClearedCount', (oldCount = 0) => oldCount++)
   }
 }
