@@ -49,10 +49,6 @@ export default class Hindsight {
     return diagnosticStats
   }
 
-  static getInstanceIndexString (perLineFields = {}) {
-    return JSON.stringify(perLineFields)
-  }
-
   static getOrCreateChild (config, parentHindsight) {
     return ObjectCache.getOrCreateChild(config, parentHindsight)
   }
@@ -77,7 +73,7 @@ export default class Hindsight {
 
     this.buffers = new LevelBuffers({ ...lineLimits, maxLineCount: lineLimits.maxCount })
 
-    const instanceSignature = Hindsight.getInstanceIndexString(perLineFields)
+    const instanceSignature = ObjectCache.getInstanceIndexString(perLineFields)
     trace('constructor', { instanceSignature, moduleKeys: Object.keys(logger) })
     this._initWrapper()
     ObjectCache.getInstances(config.instanceLimits)?.set(instanceSignature, this) // todo: make optional

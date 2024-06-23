@@ -52,7 +52,7 @@ class LevelBuffers {
       maxLineCount, // max total of all log lines
       (line) => {
         trace(`Evicting line: ${JSON.stringify(line.context)}`)
-        const buffer = line.context.weakBufferRef.deref()
+        const buffer = line.context?.weakBufferRef.deref()
         buffer?.delete(line.context.sequence)
         delete line.context
         delete line.payload
