@@ -172,6 +172,12 @@ class LevelBuffers {
     const bytesAvailable = maxAvailableHeap * percentForHindsight
     if (bytesAvailable > reservedAppBytes) {
       // there's enough free memory for the app, done here
+      trace('memory stats', {
+        bytesAvailable,
+        reservedAppBytes,
+        maxAvailableHeap,
+        totalLineCount: GlobalLineRingbuffer.size()
+      })
       return
     }
     info('Warning: Free memory low', {

@@ -55,24 +55,20 @@ class ObjectCache {
     return JSON.stringify(perLineFields)
   }
 
+  static get maxAge () {
+    return GlobalHindsightInstances?.maxAge
+  }
+
+  static get maxSize () {
+    return GlobalHindsightInstances?.maxSize
+  }
+
   static set (key, object) {
     if (GlobalHindsightInstances == null) {
       return
     }
     registry.register(object, key)
     GlobalHindsightInstances.set(key, object)
-  }
-
-  static cleanupExpiredInstances () {
-    if (GlobalHindsightInstances == null) {
-      return
-    }
-    for (const [key, instance] of GlobalHindsightInstances) {
-      if (instance.isExpired) {
-        instance.delete(key)
-        setStressStat('expiredCount', (oldCount = 0) => oldCount + 1)
-      }
-    }
   }
 
   static getOrCreateChild (config, parentHindsight) {
@@ -101,6 +97,19 @@ class ObjectCache {
     setStressStat('childRetrievedCount', (oldCount = 0) => oldCount + 1)
     return instance
   }
+
+  static cleanupExpiredInstances () {
+    if (GlobalHindsightInstances == null) {
+      return
+    }
+    for (const [key, instance] of GlobalHindsightInstances) {
+      if (instance.isExpired) {
+        instance.delete(key)
+        setStressStat('expiredCount', (oldCount = 0) => oldCount + 1)
+      }
+    }
+  }
 }
 
 export default ObjectCache
+

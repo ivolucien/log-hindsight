@@ -103,8 +103,8 @@ export default class Hindsight {
     const innerChild = logger.child ? logger.child(perLineFields) : logger // use child factory if available
     const childConfig = {
       instanceLimits: {
-        maxAge: ObjectCache.getInstances()?.maxAge,
-        maxSize: ObjectCache.getInstances()?.maxSize
+        maxAge: ObjectCache.maxAge,
+        maxSize: ObjectCache.maxSize
       },
       lineLimits: combinedLimits,
       logger: innerChild,
