@@ -144,8 +144,9 @@ describe('General Stress Test', function () {
           console.error(error)
         }
       })
-      console.log({ stats })
+      console.dir({ stats })
     }
+    console.log('End of stress test, killing all Hindsight instances')
     logAndKillInstances()
     await logAndWait()
     ObjectCache.cleanupExpiredInstances()

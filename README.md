@@ -1,7 +1,7 @@
 # log-hindsight
 log-hindsight adds retroactive and conditional logic to standard loggers, allowing you to retroactively trigger what would have been logged at more detailed log level, such as after an error, to perform custom data filtering, or most custom logging logic you might need.
 
-**NOT Production Ready** At this pre-alpha stage log-hindsight supports basic functions for some of the most popular logger modules, but has memory optimization that need to be addressed before it can be used in production. It is not yet published to npm.
+**NOT Production Ready** At this pre-alpha stage log-hindsight supports basic functions for some of the most popular logger modules, but has memory optimization that must be addressed before it's ready for production. It is not yet published to npm.
 
 See also: [API Documentation](API.md)
 
