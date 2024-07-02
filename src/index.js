@@ -6,6 +6,7 @@ import { getConfig } from './config.js'
 import ObjectCache from './object-cache.js'
 import LogAdapter from './adapter.js'
 import LevelBuffers from './level-buffers.js'
+import { simplifyToDepth } from './tools.js'
 import getScopedLoggers from './internal-loggers.js'
 const { trace, info, error } = getScopedLoggers('hindsight')
 
@@ -63,7 +64,7 @@ export default class Hindsight {
     this.adapter = new LogAdapter(logger, perLineFields)
 
     this.perLineFields = perLineFields
-    this.filterData = config.filterData || this._shallowCopy
+    this.filterData = config.filterData || simplifyToDepth
 
     this.buffersMutex = new Mutex()
     this._writeWhen = writeWhen
@@ -379,16 +380,15 @@ export default class Hindsight {
   }
 
   async _bufferLine (name, context, payload) {
-    const filteredArgs = this.filterData(payload)
     const logEntry = {
       context: { name, ...context },
-      payload: filteredArgs
+      payload: this.filterData(payload)
     }
     this.buffers.addLine(name, logEntry)
     trace('_bufferLine was called', name, context)
 
     if (this._bufferCount++ % 1000 !== 0) {
-      return
+      return // return 99.9% of the time, every 1000th call apply line limits
     }
     this.applyLineLimits()
   }

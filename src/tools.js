@@ -1,26 +1,26 @@
+// shared tools for log-hindsight
+
 export function simplifyToDepth (value, maxDepth = 3, maxArrayLength = 10, depth = 0, seen = new WeakMap()) {
   try {
-    if (depth >= maxDepth) {
-      return '[Truncated]'
-    }
-    if ((typeof value !== 'object' && typeof value !== 'bigint') || value === null) {
+    const type = typeof value
+    if ((type !== 'object' && type !== 'bigint') || value instanceof Error || value === null) {
       return value
     }
 
     if (value instanceof Date) {
-      return value.toISOString()
+      return new Date(value.getTime())
     }
 
-    if (value instanceof Error) {
-      return value.message
-    }
-
-    if (typeof value === 'function') {
+    if (type === 'function') {
       return '[Function]'
     }
 
-    if (value instanceof RegExp || typeof value === 'symbol' || typeof value === 'bigint') {
+    if (value instanceof RegExp || type === 'symbol' || type === 'bigint') {
       return value.toString()
+    }
+
+    if (depth >= maxDepth) {
+      return '[Truncated]' // truncate objects and containers at maxDepth
     }
 
     if (seen.has(value)) {
