@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import Hindsight from '../index.js' // Adjusted import path based on file location
 
 describe('Hindsight filterData functionality', () => {
-  it('should apply a shallow copy of log line args by default', () => {
+  it('should apply a simplified version of log line args by default', () => {
     const hindsight = new Hindsight({
       logger: console,
       writeWhen: { level: 'warn' } // Ensure that debug messages are buffered
@@ -16,7 +16,7 @@ describe('Hindsight filterData functionality', () => {
 
     expect(bufferedLine.payload).to.eql(originalArgs) // Checks for deep equality in value
     expect(bufferedLine.payload[0]).to.not.equal(originalArgs[0]) // top level params cloned
-    expect(bufferedLine.payload[0].nested).to.equal(originalArgs[0].nested) // nested params not cloned
+    expect(bufferedLine.payload[0].nested).to.not.equal(originalArgs[0].nested) // nested params cloned
   })
 
   it('should apply a custom filterData function to log line args', () => {

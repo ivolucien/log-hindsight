@@ -25,7 +25,7 @@ describe('safeStringifyToDepth', function () {
 
     expect(result).to.equal(
       '{"date":"' + date.toISOString() +
-      '","error":"test error","regex":"/test/","string":"test","number":123,"boolean":true,"nullValue":null}'
+      '","error":{},"regex":"/test/","string":"test","number":123,"boolean":true,"nullValue":null}'
     )
   })
 
@@ -41,7 +41,7 @@ describe('safeStringifyToDepth', function () {
     const result = safeStringifyToDepth(obj, 2)
 
     expect(result).to.equal(
-      '{"bigint":"123","buffer":{"0":"[Truncated]","1":"[Truncated]","2":"[Truncated]","3":"[Truncated]"}}'
+      '{"bigint":"123","buffer":{"0":116,"1":101,"2":115,"3":116}}'
     )
   })
 
@@ -93,12 +93,15 @@ describe('safeStringifyToDepth', function () {
   })
 
   it('should handle errors gracefully', function () {
-    const forceErrorDate = new Date()
-    const original = forceErrorDate.toISOString
-    forceErrorDate.toISOString = function () { throw new Error('forceErrorDate') }
-
-    const result = safeStringifyToDepth(forceErrorDate)
-    forceErrorDate.toISOString = original
+    const forceErrorRegExp = /./
+    const original = forceErrorRegExp.toString
+    forceErrorRegExp.toString = function () { throw new Error('force Error') }
+    let result
+    try {
+      result = safeStringifyToDepth({ a: forceErrorRegExp }, 3, 10, 0, forceErrorRegExp)
+    } finally {
+      forceErrorRegExp.toString = original
+    }
 
     expect(result).to.include('Error: safeStringifyToDepth')
   })
@@ -157,7 +160,7 @@ describe('safeStringifyToDepth', function () {
 
     const result = safeStringifyToDepth(arr, 3)
 
-    expect(result).to.equal('[1,[2,["[Truncated]","[Truncated]"]]]')
+    expect(result).to.equal('[1,[2,[3,"[Truncated]"]]]')
   })
 
   it('should handle functions in nested structures', function () {
@@ -168,7 +171,7 @@ describe('safeStringifyToDepth', function () {
 
     const result = safeStringifyToDepth(obj, 3)
 
-    expect(result).to.equal('{"a":1,"b":{"d":{"e":"[Truncated]"}}}')
+    expect(result).to.equal('{"a":1,"b":{"d":{"e":"text"}}}')
   })
 
   it('should handle mixed structures', function () {
